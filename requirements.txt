@@ -1,8 +1,9 @@
+uvicorn[standard]
 fastapi
-uvicorn
 sqlalchemy
 psycopg2-binary
 firebase-admin
 python-multipart
 python-dotenv
 requests
+alembic
