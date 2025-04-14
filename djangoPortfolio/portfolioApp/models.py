@@ -1,11 +1,11 @@
 from django.db import models
 import time
+from yfinance import Ticker
 
 class Portfolio(models.Model):
     cash = models.FloatField()
 
     def buy_stock(self, ticker, shares):
-        from yfinance import Ticker
         stock = Ticker(ticker)
         price = stock.info.get("currentPrice")
         if price is None or self.cash < shares * price:
@@ -21,7 +21,6 @@ class Portfolio(models.Model):
         self.save()
 
     def sell_stock(self, ticker, shares):
-        from yfinance import Ticker
         total = sum(p.shares for p in self.holdings.filter(ticker=ticker))
         if shares > total:
             raise ValueError("Not enough shares")
@@ -39,6 +38,20 @@ class Portfolio(models.Model):
                 break
         self.save()
         return price * shares
+    
+    def get_total_value(self):
+        value = self.cash
+        for pos in self.holdings.all():
+            current_price = Ticker(pos.ticker).info.get("currentPrice") or pos.share_price
+            value += pos.shares * current_price
+        return value
+    
+    def log_portfolio_value(self):
+        PortfolioLog.objects.create(
+            portfolio=self,
+            total_value=self.get_total_value(),
+        )
+
 
 class Position(models.Model):
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='holdings')
@@ -46,3 +59,10 @@ class Position(models.Model):
     shares = models.FloatField()
     share_price = models.FloatField()
     purchase_timestamp = models.FloatField(default=time.time)
+
+class PortfolioLog(models.Model):
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='logs')
+    timestamp = models.FloatField(default=time.time)
+    total_value = models.FloatField()
+
+
