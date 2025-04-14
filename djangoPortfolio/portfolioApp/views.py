@@ -2,7 +2,25 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Portfolio
 import json
-import requests
+from portfolioApp.libs.LLM import start_trade
+from django.shortcuts import render
+import os
+
+LOG_FILE_PATH = "autonomous_trading_log.txt"
+
+def chat_view(request):
+    start_trade()
+    return render(request, "chat_feed.html")
+
+def chat_log_api(request):
+    if not os.path.exists(LOG_FILE_PATH):
+        return JsonResponse({"messages": []})
+    
+    with open(LOG_FILE_PATH, "r") as file:
+        lines = file.readlines()
+    
+    return JsonResponse({"messages": lines[-100:]}) 
+
 
 def get_portfolio():
     return Portfolio.objects.first()
@@ -30,21 +48,3 @@ def sell(request):
         return JsonResponse({"message": f"Sold {shares} shares of {ticker}", "profit": profit})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
-
-def advice(request):
-    p = get_portfolio()
-    lines = [
-        f"{h.shares} shares of {h.ticker} bought at ${h.share_price}"
-        for h in p.holdings.all()
-    ]
-    prompt = "Evaluate this portfolio:\n" + "\n".join(lines)
-
-    response = requests.post("http://localhost:11434/api/generate", json={
-        "model": "llama2",
-        "prompt": prompt,
-        "stream": False
-    })
-
-    if response.ok:
-        return JsonResponse({"advice": response.json()["response"]})
-    return JsonResponse({"error": "LLM failed to respond"}, status=500)

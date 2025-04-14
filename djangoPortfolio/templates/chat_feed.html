@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bot Chat Viewer</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
+        #chat-box {
+            width: 90%;
+            max-width: 1000px;
+            margin: 30px auto;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 15px;
+            height: 80vh;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align:center;">Autonomous Trading Bot Chat</h1>
+    <div id="chat-box"></div>
+
+    <script>
+        async function fetchChat() {
+            const response = await fetch('/api/chat-log/');
+            const data = await response.json();
+            const chatBox = document.getElementById("chat-box");
+            chatBox.innerText = data.messages.join("");
+            chatBox.scrollTop = chatBox.scrollHeight;  
+        }
+
+        fetchChat();  
+        setInterval(fetchChat, 2000);
+    </script>
+</body>
+</html>
