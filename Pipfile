@@ -8,6 +8,9 @@ yfinance = "*"
 snscrape = "*"
 django = "*"
 feedparser = "*"
+autogen-agentchat = "*"
+autogen-ext = {extras = ["openai"], version = "*"}
+litellm = {extras = ["proxy"], version = "*"}
 
 [dev-packages]
 
