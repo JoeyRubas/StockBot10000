@@ -11,8 +11,9 @@ feedparser = "*"
 autogen-agentchat = "*"
 autogen-ext = {extras = ["openai"], version = "*"}
 litellm = {extras = ["proxy"], version = "*"}
+black = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.11"
+python_version = "3.12"

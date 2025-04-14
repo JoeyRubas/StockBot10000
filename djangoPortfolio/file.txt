@@ -1,0 +1,67 @@
+.
+├── db.sqlite3
+├── djangoPortfolio
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── settings.cpython-311.pyc
+│   │   ├── settings.cpython-312.pyc
+│   │   ├── urls.cpython-311.pyc
+│   │   ├── urls.cpython-312.pyc
+│   │   └── wsgi.cpython-311.pyc
+│   ├── asgi.py
+│   ├── celery.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── file.txt
+├── manage.py
+├── portfolioApp
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-311.pyc
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── admin.cpython-311.pyc
+│   │   ├── admin.cpython-312.pyc
+│   │   ├── apps.cpython-311.pyc
+│   │   ├── apps.cpython-312.pyc
+│   │   ├── models.cpython-311.pyc
+│   │   ├── models.cpython-312.pyc
+│   │   ├── urls.cpython-311.pyc
+│   │   ├── urls.cpython-312.pyc
+│   │   ├── views.cpython-311.pyc
+│   │   └── views.cpython-312.pyc
+│   ├── admin.py
+│   ├── apps.py
+│   ├── libs
+│   │   ├── LLM.py
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── LLM.cpython-311.pyc
+│   │   │   ├── __init__.cpython-311.pyc
+│   │   │   ├── data_fetchers.cpython-311.pyc
+│   │   │   └── schema.cpython-311.pyc
+│   │   ├── data_fetchers.py
+│   │   └── schema.py
+│   ├── management
+│   │   └── commands
+│   │       ├── __pycache__
+│   │       │   └── run_trade.cpython-311.pyc
+│   │       └── run_trade.py
+│   ├── migrations
+│   │   ├── 0001_initial.py
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       ├── 0001_initial.cpython-311.pyc
+│   │       ├── 0001_initial.cpython-312.pyc
+│   │       ├── __init__.cpython-311.pyc
+│   │       └── __init__.cpython-312.pyc
+│   ├── models.py
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+└── templates
+    └── chat_feed.html
+
+13 directories, 52 files
