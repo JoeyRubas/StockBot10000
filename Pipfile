@@ -5,8 +5,11 @@ name = "pypi"
 
 [packages]
 yfinance = "*"
+snscrape = "*"
+django = "*"
+feedparser = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.12"
+python_version = "3.11"
