@@ -4,6 +4,19 @@ from yfinance import Ticker
 
 class Portfolio(models.Model):
     cash = models.FloatField()
+    
+    def get_total_value(self):
+        value = self.cash
+        for pos in self.holdings.all():
+            current_price = Ticker(pos.ticker).info.get("currentPrice") or pos.share_price
+            value += pos.shares * current_price
+        return value
+    
+    def log_portfolio_value(self):
+        PortfolioLog.objects.create(
+            portfolio=self,
+            total_value=self.get_total_value(),
+        )
 
     def buy_stock(self, ticker, shares):
         stock = Ticker(ticker)
@@ -19,6 +32,7 @@ class Portfolio(models.Model):
         )
         self.cash -= shares * price
         self.save()
+        self.log_portfolio_value()
 
     def sell_stock(self, ticker, shares):
         total = sum(p.shares for p in self.holdings.filter(ticker=ticker))
@@ -37,20 +51,8 @@ class Portfolio(models.Model):
                 p.save()
                 break
         self.save()
+        self.log_portfolio_value()
         return price * shares
-    
-    def get_total_value(self):
-        value = self.cash
-        for pos in self.holdings.all():
-            current_price = Ticker(pos.ticker).info.get("currentPrice") or pos.share_price
-            value += pos.shares * current_price
-        return value
-    
-    def log_portfolio_value(self):
-        PortfolioLog.objects.create(
-            portfolio=self,
-            total_value=self.get_total_value(),
-        )
 
 
 class Position(models.Model):

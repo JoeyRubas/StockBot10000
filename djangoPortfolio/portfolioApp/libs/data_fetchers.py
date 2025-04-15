@@ -8,9 +8,9 @@ def fetch_google_news(topic="stock market"):
     feed = feedparser.parse(feed_url)
     return [{
         'title': entry.title,
-        'summary': entry.get('summary', ''),
-        'link': entry.link,
-        'published': entry.published
+        #'summary': entry.get('summary', ''),
+        #'link': entry.link,
+        #'published': entry.published
     } for entry in feed.entries]
 
 
