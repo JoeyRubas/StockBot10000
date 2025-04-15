@@ -3,7 +3,7 @@ import datetime
 from autogen_core.models import ModelFamily
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.conditions import TextMentionTermination
-from autogen_agentchat.teams import RoundRobinGroupChat
+from autogen_agentchat.teams import MagenticOneGroupChat
 from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from portfolioApp.models import Portfolio 
@@ -49,15 +49,17 @@ def get_portfolio() -> Dict[str, float]:
     holdings = portfolio.holdings.values('ticker').annotate(total=Sum('shares'))
     return {entry['ticker']: entry['total'] for entry in holdings}
 
-def get_data(source: str, symbol: str) -> Dict[str, Union[str, float]]:
+""" def get_data(source: str, symbol: str) -> Dict[str, Union[str, float]]:
     if source == "market":
         return fetch_market_data(symbol)
     elif source == "headlines":
         return fetch_google_news(symbol)
     elif source == "twitter":
         return fetch_twitter_sentiment(symbol)
-    return {"error": "Invalid source"}
+    return {"error": "Invalid source"} """
 
+def get_data() -> Dict[str, Union[str, float]]:
+    return fetch_google_news()
 
 
 class FileLoggerRunner:
@@ -97,24 +99,26 @@ def build_tools(schema_list, function_implementations):
     return tools
 
 
-async def run_stockbot_group_chat(agent_configs, task, log_file="chat_log.txt"):
+async def run_stockbot_group_chat(agent_configs, task):
     agents = [create_agent(**config) for config in agent_configs]
     trading_agent = AssistantAgent(
-    name="interfacing_agent",
-    model_client=custom_model_client,
-    description="Handles data fetching and trades using the Portfolio model.",
-    system_message="You're the interface to the stock trading system. "
-                   "Call functions to fetch stock data, get the current portfolio, "
-                   "and execute trades on behalf of the user.",
-    tools=[buy, sell, get_data, get_portfolio]
-)
+        name="interfacing_agent",
+        model_client=custom_model_client,
+        description="Handles data fetching and trades using the Portfolio model.",
+        system_message="You're the interface to the stock trading system. " \
+                      "Call functions to fetch data, get the current portfolio, " \
+                      "and execute trades on behalf of the user.",
+        tools=[buy, sell, get_data, get_portfolio]
+    )
 
-    agents.append(trading_agent)
+    agents.insert(0, trading_agent)
     termination = TextMentionTermination("TERMINATE")
-    group_chat = RoundRobinGroupChat(agents, termination_condition=termination)
+    group_chat = MagenticOneGroupChat(agents, termination_condition=termination, model_client=custom_model_client)
     await Console(group_chat.run_stream(task=task))
 
 def start_trade():
+    Portfolio.objects.all().delete()
+    Portfolio.objects.create(cash=10000)  # Initialize with $10,000
     agent_configs = [
         {
             "name": "upside_searcher",
@@ -122,26 +126,22 @@ def start_trade():
             "system_message": "You are a financial strategist. Identify stocks with the highest potential for growth and suggest trades.",
         },
         {
-            "name": "market_analyst_agent",
-            "description": "Analyzes current market conditions and trends.",
-            "system_message": "You are a market analyst. Continuously monitor market trends, sentiment, and volatility to identify trading opportunities.",
-        },
-        {
             "name": "risk_assessment_agent",
             "description": "Assesses risk and suggests mitigations.",
             "system_message": "You assess portfolio risk and suggest diversification or hedging tactics to minimize potential losses.",
         },
-        {
-            "name": "execution_agent",
-            "description": "Executes trades based on the strategy and insights provided by other agents.",
-            "system_message": "You are responsible for executing trades. Use the provided functions to buy or sell stocks as needed.",
-        },
     ]
     task = (
-        "You are part of a simulated stock trade experiment. One agent in the group chat, "
-        "the interfacing agent, can access real data about the news and market, while the other agents "
-        "are tasked with analyzing the data and making decisions. Work together to decide what trades to make based "
+        "You are part of a simulated stock trade experiment, where you trade in a fake"
+        "portfolio, based on real stocks and data. One agent in the group chat, "
+        "the interfacing agent, will manage and access real data about the news and market, while the other agents "
+        "are tasked with analyzing the data and making decisions. Note that the interfacing agenct"
+        "is your only legitmate source of outside data, and the other agents do not have access outside of their own knowledge"
+        "Work together to decide what trades to make based "
         "on the data, and try to maximize the simulated portfolio's value."
+        "You can only buy and sell publicly traded stocks, no bonds, crypto, ETFs, or other assets." 
+        "Your portfolio will begin with $10,000 cash, and no holdings."
+        "The interfacing agent will begin your discussion by fetching recent headlines."
     )
     asyncio.run(run_stockbot_group_chat(agent_configs, task))
     
