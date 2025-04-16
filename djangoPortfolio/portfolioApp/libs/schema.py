@@ -42,7 +42,7 @@ stock_functions = [
         "description": "Get the current portfolio including all owned stocks and quantities",
         "parameters": {
             "type": "object",
-            "properties": {}, 
+            "properties": {},
         },
     },
 ]
