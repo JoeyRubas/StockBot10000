@@ -1,17 +1,19 @@
 from django.db import models
 import time
 from yfinance import Ticker
+from portfolioApp.libs.tickers import available_tickers
+
 
 class Portfolio(models.Model):
     cash = models.FloatField()
-    
+
     def get_total_value(self):
         value = self.cash
         for pos in self.holdings.all():
             current_price = Ticker(pos.ticker).info.get("currentPrice") or pos.share_price
             value += pos.shares * current_price
         return value
-    
+
     def log_portfolio_value(self):
         PortfolioLog.objects.create(
             portfolio=self,
@@ -19,22 +21,24 @@ class Portfolio(models.Model):
         )
 
     def buy_stock(self, ticker, shares):
+        ticker = ticker.upper()
+        if ticker not in available_tickers:
+            raise ValueError("Invalid ticker")
         stock = Ticker(ticker)
         price = stock.info.get("currentPrice")
         if price is None or self.cash < shares * price:
             raise ValueError("Insufficient funds")
         Position.objects.create(
-            portfolio=self,
-            ticker=ticker.upper(),
-            shares=shares,
-            share_price=price,
-            purchase_timestamp=time.time()
+            portfolio=self, ticker=ticker.upper(), shares=shares, share_price=price, purchase_timestamp=time.time()
         )
         self.cash -= shares * price
         self.save()
         self.log_portfolio_value()
 
     def sell_stock(self, ticker, shares):
+        ticker = ticker.upper()
+        if ticker not in available_tickers:
+            raise ValueError("Invalid ticker")
         total = sum(p.shares for p in self.holdings.filter(ticker=ticker))
         if shares > total:
             raise ValueError("Not enough shares")
@@ -56,15 +60,14 @@ class Portfolio(models.Model):
 
 
 class Position(models.Model):
-    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='holdings')
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="holdings")
     ticker = models.CharField(max_length=10)
     shares = models.FloatField()
     share_price = models.FloatField()
     purchase_timestamp = models.FloatField(default=time.time)
 
+
 class PortfolioLog(models.Model):
-    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='logs')
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="logs")
     timestamp = models.FloatField(default=time.time)
     total_value = models.FloatField()
-
-

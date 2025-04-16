@@ -4,3 +4,4 @@
 *.db
 firebase-credentials.json
 .env
+*/daily_data/*
