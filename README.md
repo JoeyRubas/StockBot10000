@@ -1,9 +1,7 @@
 To run:
 
 ```
-pyenv install 3.12
+pyenv install 3.11
 pipenv install
 pipenv shell
-alembic upgrade head
-pipenv run main.py
 ```
