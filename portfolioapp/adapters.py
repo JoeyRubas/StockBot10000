@@ -15,6 +15,7 @@ class NoPromptSocialAccountAdapter(DefaultSocialAccountAdapter):
          Force AllAuth to auto-link the Google login to an existing user if
          the email already exists in the database, skipping any conflict form.
          """
+         print("💡 pre_social_login triggered!", flush=True)
          # If the user is already logged in, do nothing
          if request.user.is_authenticated:
              return
