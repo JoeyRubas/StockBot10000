@@ -341,6 +341,7 @@ ujson @ file:///opt/concourse/worker/volumes/live/2fc9988c-ebca-4577-6c4b-7383ea
 unicodecsv==0.14.1
 uritemplate==4.1.1
 urllib3==1.26.19
+uvicorn
 uvicorn==0.33.0
 watchdog @ file:///opt/concourse/worker/volumes/live/cc0ee7bb-1065-44c4-5867-0fd5d13729e0/volume/watchdog_1593447373245/work
 wcwidth @ file:///tmp/build/80754af9/wcwidth_1593447189090/work
