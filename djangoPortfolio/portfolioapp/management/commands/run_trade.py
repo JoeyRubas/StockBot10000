@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from portfolioApp.libs.LLM import start_trade
+from portfolioapp.libs.LLM import start_trade
 
 
 class Command(BaseCommand):

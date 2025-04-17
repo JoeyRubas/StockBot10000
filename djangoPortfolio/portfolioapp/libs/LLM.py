@@ -6,7 +6,7 @@ from autogen_agentchat.conditions import TextMentionTermination
 from autogen_agentchat.teams import MagenticOneGroupChat
 from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-from portfolioApp.models import Portfolio
+from portfolioapp.models import Portfolio
 from django.db.models import Sum
 from typing import Dict, Union
 

@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Portfolio
 import json
-from portfolioApp.libs.LLM import start_trade
+from portfolioapp.libs.LLM import start_trade
 from django.shortcuts import render
 import os
 

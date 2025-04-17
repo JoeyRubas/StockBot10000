@@ -4,8 +4,8 @@ import time
 from datetime import datetime, timedelta
 
 from django.core.management.base import BaseCommand
-from portfolioApp.libs.tickers import available_tickers
-from portfolioApp.libs.data_fetchers import DataFetcher, google_url, twitter_url
+from portfolioapp.libs.tickers import available_tickers
+from portfolioapp.libs.data_fetchers import DataFetcher, google_url, twitter_url
 
 
 class Command(BaseCommand):

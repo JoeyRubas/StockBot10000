@@ -1,7 +1,7 @@
 import json
 import feedparser
 from yfinance import Ticker
-from portfolioApp.libs.tickers import available_tickers
+from portfolioapp.libs.tickers import available_tickers
 from fuzzywuzzy import process
 from datetime import datetime
 
