@@ -1,8 +1,7 @@
 from django.db import models
 import time
 from yfinance import Ticker
-from portfolioApp.libs.tickers import available_tickers
-
+from djangoPortfolio.portfolioApp.libs.tickers import available_tickers
 
 class Portfolio(models.Model):
     cash = models.FloatField()
