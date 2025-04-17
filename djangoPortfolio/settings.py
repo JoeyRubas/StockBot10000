@@ -38,6 +38,7 @@ AUTHENTICATION_BACKENDS = [
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
+# 5 for heroku, 3 for localhost!
 SITE_ID = 5
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
