@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Sessions{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Your Simulation Sessions</h1>
+<a href="{% url 'create_session' %}" class="text-blue-500 underline mb-4 inline-block">+ New Simulation</a>
+
+<div id="session-list">
+    {% include "partials/session_list_items.html" %}
+</div>
+{% endblock %}

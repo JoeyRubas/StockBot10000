@@ -17,6 +17,36 @@ custom_model_client = OpenAIChatCompletionClient(
     model_info={"vision": False, "function_calling": True, "json_output": True, "family": ModelFamily.UNKNOWN},
 )
 
+def start_trade_for_session(session_id):
+    session = SimulationSession.objects.get(id=session_id)
+    Portfolio.objects.all().delete()
+    Portfolio.objects.create(cash=session.amount)
+
+    # You could customize agents or tasks based on the session’s source_x flags
+    # For now, keep the same agent setup as before
+    agent_configs = [
+        {
+            "name": "upside_searcher",
+            "description": "Plans financial strategies...",
+            "system_message": "You are a financial strategist...",
+        },
+        {
+            "name": "risk_assessment_agent",
+            "description": "Assesses risk...",
+            "system_message": "You assess portfolio risk...",
+        },
+    ]
+
+    task = (
+        f"Simulate trading using sources: "
+        f"{'Twitter' if session.source_twitter else ''} "
+        f"{'Google' if session.source_google else ''} "
+        f"{'Stock prices' if session.source_stock_prices else ''}.\n"
+        f"Initial cash: ${session.amount}."
+        "\nWork together to make decisions."
+    )
+
+    asyncio.run(run_stockbot_group_chat(agent_configs, task))
 
 def get_active_portfolio():
     return Portfolio.objects.first()

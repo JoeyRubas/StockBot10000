@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load socialaccount %}
+
+{% block title %}Logged Out{% endblock %}
+
+{% block content %}
+  <h2>You’ve been logged out.</h2>
+  <p>Thanks for using StockBot!</p>
+  <a href="{% provider_login_url 'google' %}" class="button" style="background: #fbbc05; padding: 0.5rem 1rem; border-radius: 6px; font-weight: bold; color: black;">
+    Sign in with Google
+  </a>
+{% endblock %}

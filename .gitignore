@@ -5,3 +5,4 @@
 firebase-credentials.json
 .env
 */daily_data/*
+db.sqlite3

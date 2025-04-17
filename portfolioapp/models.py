@@ -2,9 +2,11 @@ from django.db import models
 import time
 from yfinance import Ticker
 from portfolioapp.libs.tickers import available_tickers
+from django.contrib.auth.models import User
 
 class Portfolio(models.Model):
     cash = models.FloatField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def get_total_value(self):
         value = self.cash
@@ -57,6 +59,14 @@ class Portfolio(models.Model):
         self.log_portfolio_value()
         return price * shares
 
+class SimulationSession(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    portfolio = models.OneToOneField(Portfolio, on_delete=models.CASCADE)
+    amount = models.FloatField()
+    use_twitter = models.BooleanField(default=False)
+    use_google = models.BooleanField(default=False)
+    use_price_history = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 class Position(models.Model):
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="holdings")

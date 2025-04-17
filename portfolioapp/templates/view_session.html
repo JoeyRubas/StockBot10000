@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Portfolio Value Over Time</h2>
+<canvas id="portfolioChart" width="800" height="400"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const sessionId = "{{ session.id }}";
+fetch(`/session/${sessionId}/value-data/`)
+    .then(res => res.json())
+    .then(data => {
+        const timestamps = data.map(entry => new Date(entry.x * 1000).toLocaleString());
+        const values = data.map(entry => entry.y);
+
+        const ctx = document.getElementById('portfolioChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timestamps,
+                datasets: [{
+                    label: 'Portfolio Value ($)',
+                    data: values,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                scales: {
+                    x: { display: true, title: { display: true, text: 'Time' } },
+                    y: { display: true, title: { display: true, text: 'Value ($)' } }
+                }
+            }
+        });
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,32 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}StockBot{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+</head>
+<body>
+    <header>
+        <h1>StockBot</h1>
+        <nav>
+            <ul>
+                {% if user.is_authenticated %}
+                    <li><a href="{% url 'session_list' %}">Sessions</a></li>
+                    <li><a href="{% url 'account_logout' %}">Logout</a></li>
+                {% else %}
+                    <li>
+                        <a href="{% provider_login_url 'google' %}" 
+                           style="background: #fbbc05; padding: 0.5rem 1rem; border-radius: 6px; font-weight: bold; color: black; text-decoration: none;">
+                            Sign in with Google
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

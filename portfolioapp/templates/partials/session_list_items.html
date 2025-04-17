@@ -1,0 +1,24 @@
+<ul class="space-y-3">
+    {% for session in sessions %}
+        <li class="p-4 bg-white rounded shadow flex justify-between items-center" id="session-{{ session.pk }}">
+            <div>
+                <a href="{% url 'view_session' session.pk %}" class="font-semibold text-lg">Session #{{ session.pk }}</a><br>
+                <span>💰 ${{ session.amount }}</span> | 
+                <span>📊 Sources:
+                    {% if session.use_twitter %}Twitter {% endif %}
+                    {% if session.use_google %}Google {% endif %}
+                    {% if session.use_price_history %}Price History{% endif %}
+                </span>
+            </div>
+            <button 
+                hx-delete="{% url 'delete_session' session.pk %}" 
+                hx-target="#session-{{ session.pk }}" 
+                hx-swap="outerHTML"
+                class="text-red-500 hover:underline">
+                Delete
+            </button>
+        </li>
+    {% empty %}
+        <li class="text-gray-600">No sessions yet.</li>
+    {% endfor %}
+</ul>
