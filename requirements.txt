@@ -61,3 +61,4 @@ yfinance==0.2.55
 zipp==3.21.0
 dj-database-url
 psycopg2-binary
+whitenoise
