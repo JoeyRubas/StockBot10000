@@ -56,3 +56,4 @@ annotated-types==0.7.0
  autogen_core
  django-allauth
  PyJWT
+ cryptography
