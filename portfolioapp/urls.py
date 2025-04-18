@@ -5,7 +5,6 @@ from .views import search_stocks
 urlpatterns = [
     path("buy/", views.buy),
     path("sell/", views.sell),
-    path("chat/", views.chat_view, name="chat_view"),
     path("api/chat-log/", views.chat_log_api, name="chat_log_api"),
     path("", views.session_list, name="session_list"),
     path("session/create/", views.create_session, name="create_session"),

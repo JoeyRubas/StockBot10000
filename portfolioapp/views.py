@@ -11,6 +11,7 @@ from django.http import JsonResponse
 from .models import PortfolioLog
 from .models import Stock
 from django.views.decorators.http import require_GET
+from django.db.models import Sum
 import yfinance as yf
 from .models import Portfolio, SimulationSession, Position
 from .models import TradeLog
@@ -57,11 +58,6 @@ def delete_session(request, pk):
     session = get_object_or_404(SimulationSession, pk=pk, user=request.user)
     session.delete()
     return redirect("session_list")
-
-
-def chat_view(request):
-    start_trade()
-    return render(request, "chat_feed.html")
 
 
 def chat_log_api(request):

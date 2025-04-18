@@ -36,6 +36,7 @@
 </table>
 
 <script>
+const sessionId = "{{ session.id }}";
 fetch(`/session/${sessionId}/holdings/`)
     .then(res => res.json())
     .then(data => {
@@ -52,9 +53,9 @@ fetch(`/session/${sessionId}/holdings/`)
         }
     });
 </script>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const sessionId = "{{ session.id }}";
 fetch(`/session/${sessionId}/value-data/`)
     .then(res => res.json())
     .then(data => {
