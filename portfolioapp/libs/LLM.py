@@ -11,7 +11,6 @@ from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.conditions import TextMentionTermination
 from autogen_agentchat.teams import MagenticOneGroupChat
 from autogen_agentchat.ui import Console
-from autogen_agentchat.messages import TextMessage
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 from portfolioapp.models import Portfolio, SimulationSession
@@ -25,13 +24,10 @@ logging.basicConfig(
     level=logging.DEBUG
 )
 
-# === Setup ===
+# === Load Environment ===
 load_dotenv()
-fetcher = DataFetcher(
-    type="url",
-    url="https://news.google.com/rss/search?q={topic}&hl=en-US&gl=US&ceid=US:en"
-)
 
+# === Custom Client ===
 custom_model_client = OpenAIChatCompletionClient(
     model="openai/gpt-3.5-turbo",
     base_url="https://openrouter.ai/api/v1",
@@ -45,58 +41,84 @@ custom_model_client = OpenAIChatCompletionClient(
     },
 )
 
-# === Tool Implementations ===
+# === Shared Tool Store ===
+tool_context = {
+    "session_id": None,
+}
 
+# === Tool Implementations ===
 def get_active_portfolio():
-    return Portfolio.objects.first()
+    portfolio = Portfolio.objects.filter(session__id=tool_context["session_id"]).first()
+    logging.debug(f"Fetched portfolio: {portfolio}")
+    return portfolio
 
 def buy(symbol: str, amount: float) -> str:
     logging.debug(f"Attempting to buy {amount} of {symbol}")
     portfolio = get_active_portfolio()
+    if not portfolio:
+        logging.error("Buy failed: No active portfolio found.")
+        return "No active portfolio found."
     try:
-        result = portfolio.buy_stock(symbol, amount)
-        logging.debug("Buy successful.")
+        result = portfolio.buy_stock(symbol, amount, session_id=tool_context["session_id"])
+        logging.debug(f"Buy result: {result}")
         return f"Successfully bought {amount} shares of {symbol}."
     except Exception as e:
-        logging.debug(f"Buy failed: {e}")
+        logging.error(f"Buy failed: {e}")
         return f"Buy failed: {str(e)}"
 
 def sell(symbol: str, amount: float) -> str:
-    """Sell a stock."""
     portfolio = get_active_portfolio()
+    if not portfolio:
+        return "No active portfolio found."
     try:
-        total_value = portfolio.sell_stock(symbol, amount)
-        logging.debug(f"Sold {amount} of {symbol} for ${total_value:.2f}")
-        return f"Successfully sold {amount} shares of {symbol} for ${total_value:.2f}."
+        session = SimulationSession.objects.get(id=tool_context["session_id"])
+        result = portfolio.sell_stock(symbol, amount, session=session)
+        logging.debug(f"Sell result: {result}")
+        return f"Successfully sold {amount} shares of {symbol}."
     except Exception as e:
-        logging.debug(f"Sell failed: {e}")
+        logging.error(f"Sell failed: {e}")
         return f"Sell failed: {str(e)}"
 
 def get_portfolio() -> Dict[str, float]:
-    """Get portfolio holdings."""
     portfolio = get_active_portfolio()
+    if not portfolio:
+        return {"error": "No active portfolio found."}
     holdings = portfolio.holdings.values("ticker").annotate(total=Sum("shares"))
     logging.debug(f"Current portfolio holdings: {holdings}")
     return {entry["ticker"]: entry["total"] for entry in holdings}
 
 def get_data() -> Dict[str, Union[str, float]]:
-    """Fetch stock market news."""
-    #news = fetcher.fetch("STOCK MARKET NEWS")
-    #logging.debug(f"Fetched news data.")
-    #return {"news": news}
-    return {"news": "Featture Disabled"}
+    try:
+        session = SimulationSession.objects.get(id=tool_context["session_id"])
+        data = {}
+
+        if session.use_twitter:
+            twitter_fetcher = DataFetcher(type="twitter")
+            data["twitter"] = twitter_fetcher.fetch_twitter_data()
+
+        if session.use_google:
+            google_fetcher = DataFetcher(type="google")
+            data["google"] = google_fetcher.fetch_google_trends()
+
+        if session.use_price:
+            price_fetcher = DataFetcher(type="price")
+            data["price"] = price_fetcher.fetch_price_history()
+
+        return data or {"message": "No data sources enabled for this session."}
+
+    except Exception as e:
+        logging.error(f"Data fetch failed: {e}")
+        return {"error": str(e)}
 
 # === Tool Wrapping ===
-
 tools = [
     FunctionTool(buy, name="buy", description="Buy a stock. Params: symbol, amount"),
     FunctionTool(sell, name="sell", description="Sell a stock."),
-    FunctionTool(get_data, name="get_data", description="Fetch news."),
+    FunctionTool(get_data, name="get_data", description="Fetch data from enabled sources (twitter, google, price)."),
     FunctionTool(get_portfolio, name="get_portfolio", description="Check portfolio."),
 ]
 
-# === Agent Creation ===
-
+# === Agent Creator ===
 def create_agent(name, description, system_message, tools=None):
     return AssistantAgent(
         name=name,
@@ -106,21 +128,18 @@ def create_agent(name, description, system_message, tools=None):
         tools=tools or []
     )
 
-# === Group Chat Runner ===
-
+# === Async Group Chat Runner ===
 async def run_stockbot_group_chat(agent_configs, task):
     interfacing_agent = create_agent(
         name="interfacing_agent",
         description="Handles trades and market info.",
         system_message=(
-            "You are an autonomous trading agent for a simulated portfolio. "
-            "Your primary responsibility is to analyze market data and stock news, "
-            "and take trading actions to grow the portfolio. You must use the available tools "
-            "to BUY or SELL stocks when you detect opportunities. "
-            "If market sentiment is positive, consider buying the related stock. "
-            "If sentiment is negative or risk is high, consider selling. "
-            "Do not wait for others to tell you when to act — make proactive decisions "
-            "that benefit the portfolio. Monitor the portfolio regularly and optimize for growth."
+            "You are an autonomous trading agent managing a simulated portfolio. "
+            "You may use all available cash to buy stocks. "
+            "Use the tools available (get_data, buy, sell, get_portfolio). "
+            "If the user specifies which stocks are allowed, ONLY use those. "
+            "If not, you can use any publicly traded stocks. "
+            "Make decisions using Twitter, Google Trends, and Price History data, if enabled."
         ),
         tools=tools
     )
@@ -144,27 +163,31 @@ async def run_stockbot_group_chat(agent_configs, task):
 
     async for event in group_chat.run_stream(task=task):
         logging.info(f"GroupChat Event: {event}")
+        if hasattr(event, "function_call"):
+            logging.info(f"Function called: {event.function_call.name}")
 
-# === Entry Point ===
-
+# === Entry Point for External Call ===
 def start_trade_for_session(session_id):
-    logging.debug(f"Starting trade session for session ID: {session_id}")
+    logging.info(f"Starting trade session for ID: {session_id}")
     session = SimulationSession.objects.get(id=session_id)
-    Portfolio.objects.all().delete()
+    if session.portfolio:
+        session.portfolio.delete()
+
     portfolio = Portfolio.objects.create(cash=session.amount)
     session.portfolio = portfolio
     session.save()
 
-    time.sleep(1)
+    # Inject session_id into tool context
+    tool_context["session_id"] = session.id
 
     agent_configs = []
 
     task = (
-        "You are a trading agent. "
-        "You must buy 1 share of GOOG immediately. This MUST be done through a "
-        "call to BUY from the interfacing agent. IT MUST NOT BE DONE ANY OTHER WAY. "
-        "Do not wait. Do not analyze. Just call the buy function. If the buy " \
-        "Function fails, terminate immediately."
+        "Execute a trading strategy based on available data sources. "
+        "Spend the full portfolio amount to buy stocks. "
+        "If user-specified stocks exist, only trade those. "
+        "Use available tools and data sources to guide decisions. "
+        "Trade can include both buying and selling. End by calling TERMINATE."
     )
 
     asyncio.run(run_stockbot_group_chat(agent_configs, task))

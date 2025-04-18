@@ -17,6 +17,7 @@ from .models import Portfolio, SimulationSession, Position
 from .models import TradeLog
 from portfolioapp.libs.LLM import start_trade_for_session
 from threading import Thread
+import time
 
 LOG_FILE_PATH = "autonomous_trading_log.txt"
 
@@ -38,8 +39,12 @@ def create_session(request):
             session.save()
             form.save_m2m()
 
-            # Trigger simulation logic
-            Thread(target=start_trade_for_session, args=(session.id,)).start()            
+            # Start trading in a background thread
+            Thread(target=start_trade_for_session, args=(session.id,)).start()
+
+            # Wait briefly to allow trades to be created
+            time.sleep(2)  # ← This is the fix
+
             return redirect('view_session', pk=session.id)
     else:
         form = SessionForm()

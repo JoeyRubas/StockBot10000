@@ -28,7 +28,7 @@ class Portfolio(models.Model):
             total_value=self.get_total_value(),
         )
 
-    def buy_stock(self, ticker, shares, session):
+    def buy_stock(self, ticker, shares, session_id):
         ticker = ticker.upper()
         stock = Ticker(ticker)
         price = stock.info.get("currentPrice")
@@ -37,6 +37,9 @@ class Portfolio(models.Model):
             raise ValueError(f"Could not retrieve price for {ticker}")
         if self.cash < shares * price:
             raise ValueError("Insufficient funds")
+
+        # ✅ Fetch session object using session_id
+        session = SimulationSession.objects.get(id=session_id)
 
         Position.objects.create(
             portfolio=self,
@@ -60,7 +63,9 @@ class Portfolio(models.Model):
         )
 
     def sell_stock(self, ticker, shares, session):
+        from yfinance import Ticker
         ticker = ticker.upper()
+
         if ticker not in available_tickers:
             raise ValueError("Invalid ticker")
 
@@ -68,7 +73,12 @@ class Portfolio(models.Model):
         if shares > total:
             raise ValueError("Not enough shares")
 
-        price = Ticker(ticker).info.get("currentPrice")
+        stock = Ticker(ticker)
+        stock_info = stock.info  # This can still be lazy-loaded sometimes
+
+        # Try multiple known good fields
+        price = stock_info.get("regularMarketPrice") or stock_info.get("currentPrice")
+        
         if price is None:
             raise ValueError(f"Could not retrieve price for {ticker}")
 
