@@ -2,7 +2,56 @@
 {% block content %}
 <h2>Portfolio Value Over Time</h2>
 <canvas id="portfolioChart" width="800" height="400"></canvas>
+<h2 class="text-xl font-semibold mt-6 mb-2">Trade History</h2>
+<table class="w-full text-left border mt-2">
+  <thead>
+    <tr>
+      <th>Time</th><th>Action</th><th>Symbol</th><th>Shares</th><th>Price</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for trade in trades %}
+    <tr>
+        <td>{{ trade.timestamp|date:"SHORT_DATETIME_FORMAT" }}</td>
+        <td>{{ trade.action|title }}</td>
+        <td>{{ trade.symbol }}</td>
+        <td>{{ trade.shares }}</td>
+        <td>${{ trade.price }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">No trades yet.</td></tr>
+    {% endfor %}    
+  </tbody>
+</table>
+<h2 class="text-xl font-semibold mt-6 mb-2">Current Holdings</h2>
+<table class="w-full text-left border mt-2" id="holdings-table">
+  <thead>
+    <tr>
+      <th>Symbol</th><th>Shares</th>
+    </tr>
+  </thead>
+  <tbody id="holdings-body">
+    <tr><td colspan="2">Loading...</td></tr>
+  </tbody>
+</table>
 
+<script>
+fetch(`/session/${sessionId}/holdings/`)
+    .then(res => res.json())
+    .then(data => {
+        const tbody = document.getElementById("holdings-body");
+        tbody.innerHTML = ""; // clear loading row
+        if (data.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='2'>No holdings</td></tr>";
+        } else {
+            data.forEach(h => {
+                const row = document.createElement("tr");
+                row.innerHTML = `<td>${h.ticker}</td><td>${h.shares}</td>`;
+                tbody.appendChild(row);
+            });
+        }
+    });
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const sessionId = "{{ session.id }}";

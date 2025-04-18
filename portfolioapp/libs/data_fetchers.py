@@ -51,7 +51,7 @@ class DataFetcher:
             formatted_url = self.url.format(topic=query)
             data = feedparser.parse(formatted_url).entries
             result = [entry.title for entry in data]
-            return f"Result for {query}: {" ".join(result)}"
+            return f"Result for {query}: {' '.join(result)}"
 
         elif self.type == "folder":
             now = datetime.now()
@@ -77,3 +77,12 @@ class DataFetcher:
             "dayHigh": info.get("dayHigh"),
             "dayLow": info.get("dayLow"),
         }
+# Singleton instance for Google News
+google_news_fetcher = DataFetcher(type="url", url=google_url)
+
+def fetch_google_news():
+    try:
+        return {"news": google_news_fetcher.fetch("STOCK MARKET NEWS")}
+    except Exception as e:
+        return {"error": str(e)}
+

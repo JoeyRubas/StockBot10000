@@ -8,15 +8,80 @@
         <label class="block font-medium">Investment Amount ($)</label>
         <input type="number" name="amount" value="1000" min="0" class="w-full mt-1 p-2 border rounded">
     </div>
+
     <div>
         <label class="block font-medium">Select Data Sources</label>
         <div class="space-y-2 mt-2">
-            <label><input type="checkbox" name="sources" value="twitter"> Twitter</label><br>
-            <label><input type="checkbox" name="sources" value="google"> Google</label><br>
-            <label><input type="checkbox" name="sources" value="price_history"> Price History</label>
+            <label><input type="checkbox" name="use_twitter"> Twitter</label><br>
+            <label><input type="checkbox" name="use_google"> Google</label><br>
+            <label><input type="checkbox" name="use_price_history"> Price History</label>
         </div>
     </div>
+
+    <div>
+        <label class="block font-medium">Select Stocks</label>
+        <input type="text" id="stock-search" placeholder="Search stocks..." class="w-full mt-1 p-2 border rounded">
+        <ul id="stock-results" class="border rounded mt-1 max-h-48 overflow-y-auto"></ul>
+        <div id="selected-stocks" class="mt-2 flex flex-wrap gap-2"></div>
+        <input type="hidden" name="stocks" id="selected-stock-ids">
+      </div>      
+
+    <input type="hidden" name="stocks" id="selected-stock-ids">
+
     <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Create</button>
 </form>
+
 <a href="{% url 'session_list' %}" class="block mt-4 text-blue-500 hover:underline">← Back to Sessions</a>
+
+<script>
+    const searchInput = document.getElementById("stock-search");
+    const resultsList = document.getElementById("stock-results");
+    const selectedContainer = document.getElementById("selected-stocks");
+    const selectedIdsInput = document.getElementById("selected-stock-ids");
+  
+    let selectedStocks = new Set();
+  
+    searchInput.addEventListener("input", async () => {
+      const query = searchInput.value.trim();
+      if (!query) return (resultsList.innerHTML = "");
+  
+      const res = await fetch(`/api/search-stocks/?q=${query}`);
+      const data = await res.json();
+  
+      resultsList.innerHTML = data
+        .map(
+          (stock) =>
+            `<li class="p-2 cursor-pointer hover:bg-gray-100" data-symbol="${stock.symbol}" data-name="${stock.name}">${stock.symbol} - ${stock.name}</li>`
+        )
+        .join("");
+    });
+  
+    resultsList.addEventListener("click", (e) => {
+      if (e.target.tagName === "LI") {
+        const symbol = e.target.dataset.symbol;
+        const name = e.target.dataset.name;
+  
+        if (!selectedStocks.has(symbol)) {
+          selectedStocks.add(symbol);
+  
+          const tag = document.createElement("span");
+          tag.className = "bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm";
+          tag.textContent = symbol;
+          selectedContainer.appendChild(tag);
+        }
+  
+        selectedIdsInput.value = Array.from(selectedStocks).join(",");
+        searchInput.value = "";
+        resultsList.innerHTML = "";
+      }
+    });
+  
+    // Optional: allow Enter key to select first result
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && resultsList.firstChild) {
+        resultsList.firstChild.click();
+        e.preventDefault();
+      }
+    });
+  </script>     
 {% endblock %}

@@ -4,7 +4,23 @@
 <head>
     <title>{% block title %}StockBot{% endblock %}</title>
     <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 </head>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const selects = document.querySelectorAll('.stock-dropdown');
+      selects.forEach(select => {
+        $(select).select2({
+          width: '100%',
+          placeholder: 'Select stock(s)',
+          allowClear: true
+        });
+      });
+    });
+</script>  
 <body>
     <header>
         <h1>StockBot</h1>
