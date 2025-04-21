@@ -2,7 +2,8 @@ from django.core.management.base import BaseCommand
 from portfolioapp.models import Stock
 import yfinance as yf
 
-POPULAR_TICKERS = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN', 'NVDA', 'META', 'NFLX', 'BRK-B', 'JPM']
+POPULAR_TICKERS = ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "NVDA", "META", "NFLX", "BRK-B", "JPM"]
+
 
 class Command(BaseCommand):
     help = "Load popular stocks into the database"

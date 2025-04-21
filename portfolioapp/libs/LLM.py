@@ -14,15 +14,8 @@ from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 from portfolioapp.models import Portfolio, SimulationSession
-from portfolioapp.libs.data_fetchers import DataFetcher
+from portfolioapp.libs.data_fetchers import google_news_fetcher, twitter_news_fetcher
 
-# === Setup Logging ===
-logging.basicConfig(
-    filename='log.txt',
-    filemode='a',
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    level=logging.DEBUG
-)
 
 # === Load Environment ===
 load_dotenv()
@@ -46,25 +39,28 @@ tool_context = {
     "session_id": None,
 }
 
+
 # === Tool Implementations ===
 def get_active_portfolio():
     portfolio = Portfolio.objects.filter(session__id=tool_context["session_id"]).first()
     logging.debug(f"Fetched portfolio: {portfolio}")
     return portfolio
 
-def buy(symbol: str, amount: float) -> str:
+
+def buy(symbol: str, amount: float, reasoning : str) -> str:
     logging.debug(f"Attempting to buy {amount} of {symbol}")
     portfolio = get_active_portfolio()
     if not portfolio:
         logging.error("Buy failed: No active portfolio found.")
         return "No active portfolio found."
     try:
-        result = portfolio.buy_stock(symbol, amount, session_id=tool_context["session_id"])
+        result = portfolio.buy_stock(symbol, amount, session_id=tool_context["session_id"], reasoning=reasoning)
         logging.debug(f"Buy result: {result}")
         return f"Successfully bought {amount} shares of {symbol}."
     except Exception as e:
         logging.error(f"Buy failed: {e}")
         return f"Buy failed: {str(e)}"
+
 
 def sell(symbol: str, amount: float) -> str:
     portfolio = get_active_portfolio()
@@ -79,6 +75,7 @@ def sell(symbol: str, amount: float) -> str:
         logging.error(f"Sell failed: {e}")
         return f"Sell failed: {str(e)}"
 
+
 def get_portfolio() -> Dict[str, float]:
     portfolio = get_active_portfolio()
     if not portfolio:
@@ -87,36 +84,41 @@ def get_portfolio() -> Dict[str, float]:
     logging.debug(f"Current portfolio holdings: {holdings}")
     return {entry["ticker"]: entry["total"] for entry in holdings}
 
+
 def get_data() -> Dict[str, Union[str, float]]:
     try:
         session = SimulationSession.objects.get(id=tool_context["session_id"])
         data = {}
 
         if session.use_twitter:
-            twitter_fetcher = DataFetcher(type="twitter")
-            data["twitter"] = twitter_fetcher.fetch_twitter_data()
+            data["twitter"] = twitter_news_fetcher.fetch("STOCK MARKET NEWS")
 
         if session.use_google:
-            google_fetcher = DataFetcher(type="google")
-            data["google"] = google_fetcher.fetch_google_trends()
+            data["google"] = google_news_fetcher.fetch("STOCK MARKET NEWS")
 
-        if session.use_price:
-            price_fetcher = DataFetcher(type="price")
-            data["price"] = price_fetcher.fetch_price_history()
+        if session.use_price_history:
+            portfolio = get_active_portfolio()
+            if not portfolio:
+                return {"error": "No active portfolio found."}
+            for holding in portfolio.holdings.all():
+                ticker = holding.ticker
+                data[ticker] = google_news_fetcher.fetch_market_data(ticker)
 
-        return data or {"message": "No data sources enabled for this session."}
+        return data or {"message": "No data sources enabled for this session. You are to proceed without data."}
 
     except Exception as e:
         logging.error(f"Data fetch failed: {e}")
         return {"error": str(e)}
 
+
 # === Tool Wrapping ===
 tools = [
     FunctionTool(buy, name="buy", description="Buy a stock. Params: symbol, amount"),
     FunctionTool(sell, name="sell", description="Sell a stock."),
-    FunctionTool(get_data, name="get_data", description="Fetch data from enabled sources (twitter, google, price)."),
-    FunctionTool(get_portfolio, name="get_portfolio", description="Check portfolio."),
+    # FunctionTool(get_data, name="get_data", description="Fetch data from enabled sources (twitter, google, price)."),
+    # FunctionTool(get_portfolio, name="get_portfolio", description="Check portfolio."),
 ]
+
 
 # === Agent Creator ===
 def create_agent(name, description, system_message, tools=None):
@@ -125,8 +127,9 @@ def create_agent(name, description, system_message, tools=None):
         model_client=custom_model_client,
         description=description,
         system_message=system_message,
-        tools=tools or []
+        tools=tools or [],
     )
+
 
 # === Async Group Chat Runner ===
 async def run_stockbot_group_chat(agent_configs, task):
@@ -141,33 +144,52 @@ async def run_stockbot_group_chat(agent_configs, task):
             "If not, you can use any publicly traded stocks. "
             "Make decisions using Twitter, Google Trends, and Price History data, if enabled."
         ),
-        tools=tools
+        tools=tools,
     )
 
     agents = [interfacing_agent]
     for config in agent_configs:
         agents.append(
             create_agent(
-                name=config["name"],
-                description=config["description"],
-                system_message=config["system_message"]
+                name=config["name"], description=config["description"], system_message=config["system_message"]
             )
         )
 
     termination = TextMentionTermination("TERMINATE")
-    group_chat = MagenticOneGroupChat(
-        agents,
-        termination_condition=termination,
-        model_client=custom_model_client
-    )
+    group_chat = MagenticOneGroupChat(agents, termination_condition=termination, model_client=custom_model_client)
 
     async for event in group_chat.run_stream(task=task):
         logging.info(f"GroupChat Event: {event}")
         if hasattr(event, "function_call"):
             logging.info(f"Function called: {event.function_call.name}")
 
+
+prompts = {
+    "Start": "Execute a trading strategy based on available data sources. "
+    "Spend the full portfolio amount to buy stocks. "
+    "If user-specified stocks exist, only trade those. "
+    "Use available tools and data sources to guide decisions. "
+    "Trade can include both buying and selling. End by calling TERMINATE."
+    "The simulation is being called for the first time, so the portfolio is empty. "
+    "and only cash is available. "
+    "Please use all of the cash to purchase your initial stocks."
+    "Please be sure to diversify, and buy at least 3 different stocks. ",
+    
+    "Adjust": "Execute a trading strategy based on available data sources. "
+    "Spend the full portfolio amount to buy stocks. "
+    "If user-specified stocks exist, only trade those. "
+    "Use available tools and data sources to guide decisions. "
+    "Trade can include both buying and selling. End by calling TERMINATE."
+    "The simulation began earlier, so the portfolio may contain stocks. "
+    "Please first check the portfolio to see if there are any stocks. "
+    "Then proceed to update your positions by buying or selling stocks. "
+    "Please be sure to diversify, and buy at least 3 different stocks. "
+    "Updates shoulld not be static, make at least 3 trades, for at least 30 percent of the portfolio. ",
+}
+
+
 # === Entry Point for External Call ===
-def start_trade_for_session(session_id):
+def start_trade_for_session(session_id, stage="Start"):
     logging.info(f"Starting trade session for ID: {session_id}")
     session = SimulationSession.objects.get(id=session_id)
     if session.portfolio:
@@ -182,12 +204,9 @@ def start_trade_for_session(session_id):
 
     agent_configs = []
 
-    task = (
-        "Execute a trading strategy based on available data sources. "
-        "Spend the full portfolio amount to buy stocks. "
-        "If user-specified stocks exist, only trade those. "
-        "Use available tools and data sources to guide decisions. "
-        "Trade can include both buying and selling. End by calling TERMINATE."
-    )
+    task = prompts[stage]
+    current_portfolio = str(get_portfolio())
+    data = str(get_data())
+    full_input = f"{task} Current portfolio: {current_portfolio}. Data: {data}"
 
-    asyncio.run(run_stockbot_group_chat(agent_configs, task))
+    asyncio.run(run_stockbot_group_chat(agent_configs, full_input))

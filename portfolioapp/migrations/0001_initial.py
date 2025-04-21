@@ -16,66 +16,98 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Portfolio',
+            name="Portfolio",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('cash', models.FloatField()),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("cash", models.FloatField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
         ),
         migrations.CreateModel(
-            name='Stock',
+            name="Stock",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('symbol', models.CharField(max_length=10, unique=True)),
-                ('name', models.CharField(max_length=100)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("symbol", models.CharField(max_length=10, unique=True)),
+                ("name", models.CharField(max_length=100)),
             ],
         ),
         migrations.CreateModel(
-            name='PortfolioLog',
+            name="PortfolioLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('timestamp', models.FloatField(default=time.time)),
-                ('total_value', models.FloatField()),
-                ('portfolio', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='logs', to='portfolioapp.portfolio')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("timestamp", models.FloatField(default=time.time)),
+                ("total_value", models.FloatField()),
+                (
+                    "portfolio",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="logs", to="portfolioapp.portfolio"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='SimulationSession',
+            name="SimulationSession",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('amount', models.FloatField()),
-                ('use_twitter', models.BooleanField(default=False)),
-                ('use_google', models.BooleanField(default=False)),
-                ('use_price_history', models.BooleanField(default=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('portfolio', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='session', to='portfolioapp.portfolio')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-                ('stocks', models.ManyToManyField(blank=True, to='portfolioapp.stock')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("amount", models.FloatField()),
+                ("use_twitter", models.BooleanField(default=False)),
+                ("use_google", models.BooleanField(default=False)),
+                ("use_price_history", models.BooleanField(default=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "portfolio",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="session", to="portfolioapp.portfolio"
+                    ),
+                ),
+                ("user", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ("stocks", models.ManyToManyField(blank=True, to="portfolioapp.stock")),
             ],
         ),
         migrations.CreateModel(
-            name='Position',
+            name="Position",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ticker', models.CharField(max_length=10)),
-                ('shares', models.FloatField()),
-                ('share_price', models.FloatField()),
-                ('purchase_timestamp', models.FloatField(default=time.time)),
-                ('portfolio', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='holdings', to='portfolioapp.portfolio')),
-                ('session', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='trades', to='portfolioapp.simulationsession')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("ticker", models.CharField(max_length=10)),
+                ("shares", models.FloatField()),
+                ("share_price", models.FloatField()),
+                ("purchase_timestamp", models.FloatField(default=time.time)),
+                (
+                    "portfolio",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="holdings",
+                        to="portfolioapp.portfolio",
+                    ),
+                ),
+                (
+                    "session",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="trades",
+                        to="portfolioapp.simulationsession",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='TradeLog',
+            name="TradeLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('action', models.CharField(max_length=10)),
-                ('symbol', models.CharField(max_length=10)),
-                ('shares', models.FloatField()),
-                ('price', models.FloatField()),
-                ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('session', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='logs', to='portfolioapp.simulationsession')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("action", models.CharField(max_length=10)),
+                ("symbol", models.CharField(max_length=10)),
+                ("shares", models.FloatField()),
+                ("price", models.FloatField()),
+                ("timestamp", models.DateTimeField(auto_now_add=True)),
+                (
+                    "session",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="logs",
+                        to="portfolioapp.simulationsession",
+                    ),
+                ),
             ],
         ),
     ]

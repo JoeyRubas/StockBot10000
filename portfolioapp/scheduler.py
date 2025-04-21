@@ -7,6 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def daily_trade_job():
     print("📈 Running daily trade job...")
     for session in SimulationSession.objects.all():
@@ -15,6 +16,7 @@ def daily_trade_job():
             print(f"✅ Trade executed for session {session.id}")
         except Exception as e:
             logger.error(f"Failed to execute trade for session {session.id}: {str(e)}")
+
 
 def start():
     scheduler = BackgroundScheduler(timezone=timezone("America/New_York"))

@@ -15,13 +15,17 @@ import os
 import dj_database_url
 from dotenv import load_dotenv
 import os
+
 load_dotenv()
 import logging
-logging.basicConfig(level=logging.DEBUG)
+
+logging.basicConfig(
+    filename="log.txt", filemode="a", format="%(asctime)s [%(levelname)s] %(message)s", level=logging.DEBUG
+)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-SOCIALACCOUNT_ADAPTER = 'portfolioapp.adapters.NoPromptSocialAccountAdapter'
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+SOCIALACCOUNT_ADAPTER = "portfolioapp.adapters.NoPromptSocialAccountAdapter"
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,12 +35,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'fallback-dev-key')
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "fallback-dev-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['stockbot10000-5e60e73638a9.herokuapp.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ["stockbot10000-5e60e73638a9.herokuapp.com", "localhost", "127.0.0.1"]
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
@@ -48,10 +52,10 @@ SITE_ID = 5
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
 ACCOUNT_SIGNUP_REDIRECT_URL = "/"  # Redirect to homepage after signup
-LOGIN_REDIRECT_URL = '/'
-ACCOUNT_LOGIN_METHODS = {'email'}
+LOGIN_REDIRECT_URL = "/"
+ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_EMAIL_REQUIRED = False
-SOCIALACCOUNT_EMAIL_REQUIRED=True
+SOCIALACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_EMAIL_VERIFICATION = "none"  # Change to "optional" or "mandatory" for email verification
 SOCIALACCOUNT_AUTO_SIGNUP = True  # Automatically sign up without extra details
@@ -73,7 +77,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "django.contrib.sites",
-    'django_apscheduler',
+    "django_apscheduler",
 ]
 
 MIDDLEWARE = [
@@ -113,11 +117,7 @@ WSGI_APPLICATION = "djangoPortfolio.wsgi.application"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,
-        ssl_require=True
-    )
+    "default": dj_database_url.config(default=os.environ.get("DATABASE_URL"), conn_max_age=600, ssl_require=True)
 }
 
 
@@ -166,3 +166,18 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_BEAT_SCHEDULE = {
+    "log-all-portfolios-every-30-seconds": {
+        "task": "portfolioapp.tasks.log_all_portfolios",
+        "schedule": 30.0,
+    },
+    "adjust-positions-every-30-minutes": {
+        "task": "portfolioapp.tasks.adjust_portfolios",
+        "schedule": 60 * 30,
+    },
+}
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"

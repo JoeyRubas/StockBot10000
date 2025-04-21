@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from portfolioapp.tasks import run_daily_simulations
 
+
 class Command(BaseCommand):
     help = "Run all daily AI simulations for each user session"
 

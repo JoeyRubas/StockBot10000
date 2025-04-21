@@ -10,13 +10,13 @@
                     {% if session.use_price_history %}Price History{% endif %}
                 </span>
             </div>
-            <button 
-                hx-delete="{% url 'delete_session' session.pk %}" 
-                hx-target="#session-{{ session.pk }}" 
-                hx-swap="outerHTML"
-                class="text-red-500 hover:underline">
-                Delete
-            </button>
+            <form action="{% url 'delete_session' session.pk %}" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="_method" value="DELETE">
+                <button type="submit" class="text-red-500 hover:underline">
+                    Delete
+                </button>
+            </form>
         </li>
     {% empty %}
         <li class="text-gray-600">No sessions yet.</li>

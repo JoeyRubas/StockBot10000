@@ -6,83 +6,117 @@
 <table class="w-full text-left border mt-2">
   <thead>
     <tr>
-      <th>Time</th><th>Action</th><th>Symbol</th><th>Shares</th><th>Price</th>
+      <th>Time</th><th>Action</th><th>Symbol</th><th>Shares</th><th>Price</th><th>Reasoning</th>
     </tr>
   </thead>
   <tbody>
-    {% for trade in trades %}
-    <tr>
-        <td>{{ trade.timestamp|date:"SHORT_DATETIME_FORMAT" }}</td>
-        <td>{{ trade.action|title }}</td>
-        <td>{{ trade.symbol }}</td>
-        <td>{{ trade.shares }}</td>
-        <td>${{ trade.price }}</td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="5">No trades yet.</td></tr>
-    {% endfor %}    
+    <tbody id="trades-body">
+      <tr><td colspan="6">Loading...</td></tr>
+    </tbody>
   </tbody>
 </table>
 <h2 class="text-xl font-semibold mt-6 mb-2">Current Holdings</h2>
 <table class="w-full text-left border mt-2" id="holdings-table">
   <thead>
     <tr>
-      <th>Symbol</th><th>Shares</th>
+      <th>Symbol</th><th>Shares</th><th>Value</th>
     </tr>
   </thead>
   <tbody id="holdings-body">
-    <tr><td colspan="2">Loading...</td></tr>
+    <tr><td colspan="3">Loading...</td></tr>
   </tbody>
 </table>
 
-<script>
-const sessionId = "{{ session.id }}";
-fetch(`/session/${sessionId}/holdings/`)
-    .then(res => res.json())
-    .then(data => {
-        const tbody = document.getElementById("holdings-body");
-        tbody.innerHTML = ""; // clear loading row
-        if (data.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='2'>No holdings</td></tr>";
-        } else {
-            data.forEach(h => {
-                const row = document.createElement("tr");
-                row.innerHTML = `<td>${h.ticker}</td><td>${h.shares}</td>`;
-                tbody.appendChild(row);
-            });
-        }
-    });
-</script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-fetch(`/session/${sessionId}/value-data/`)
-    .then(res => res.json())
-    .then(data => {
-        const timestamps = data.map(entry => new Date(entry.x * 1000).toLocaleString());
-        const values = data.map(entry => entry.y);
+  const sessionId = "{{ session.id }}";
+  
+  function fetchHoldings() {
+      fetch(`/session/${sessionId}/holdings/`)
+          .then(res => res.json())
+          .then(data => {
+              const tbody = document.getElementById("holdings-body");
+              tbody.innerHTML = ""; 
+              if (data.length === 0) {
+                  tbody.innerHTML = "<tr><td colspan='2'>No holdings</td></tr>";
+              } else {
+                  data.forEach(h => {
+                      const row = document.createElement("tr");
+                      row.innerHTML = `<td>${h.ticker}</td><td>${h.shares}</td><td>$${h.value.toFixed(2)}</td>`;
+                      tbody.appendChild(row);
+                  });
+              }
+          });
+  }
 
-        const ctx = document.getElementById('portfolioChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: timestamps,
-                datasets: [{
-                    label: 'Portfolio Value ($)',
-                    data: values,
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                scales: {
-                    x: { display: true, title: { display: true, text: 'Time' } },
-                    y: { display: true, title: { display: true, text: 'Value ($)' } }
-                }
-            }
-        });
-    });
-</script>
+  function fetchTradeHistory() {
+      fetch(`/session/${sessionId}/trades/`)
+          .then(res => res.json())
+          .then(data => {
+              const tbody = document.getElementById("trades-body");
+              tbody.innerHTML = ""; 
+              if (data.length === 0) {
+                  tbody.innerHTML = "<tr><td colspan='5'>No trades</td></tr>";
+              } else {
+                  data.forEach(h => {
+                      const row = document.createElement("tr");
+                      row.innerHTML = `<td>${h.timestamp}</td><td>${h.action}</td><td>${h.symbol}</td><td>${h.shares}</td><td>$${h.price.toFixed(2)}</td><td>${h.reasoning}</td>`;
+                      tbody.appendChild(row);
+                  });
+              }
+          });
+  }
+  
+  let chart; 
+  
+  function fetchPortfolioChart() {
+      fetch(`/session/${sessionId}/value-data/`)
+          .then(res => res.json())
+          .then(data => {
+              const timestamps = data.map(entry => new Date(entry.x * 1000).toLocaleString());
+              const values = data.map(entry => entry.y);
+  
+              const ctx = document.getElementById('portfolioChart').getContext('2d');
+  
+              if (chart) {
+                  chart.data.labels = timestamps;
+                  chart.data.datasets[0].data = values;
+                  chart.update();
+              } else {
+                  chart = new Chart(ctx, {
+                      type: 'line',
+                      data: {
+                          labels: timestamps,
+                          datasets: [{
+                              label: 'Portfolio Value ($)',
+                              data: values,
+                              borderWidth: 2,
+                              fill: true,
+                              tension: 0.3
+                          }]
+                      },
+                      options: {
+                          scales: {
+                              x: { display: true, title: { display: true, text: 'Time' } },
+                              y: { display: true, title: { display: true, text: 'Value ($)' } }
+                          }
+                      }
+                  });
+              }
+          });
+  }
+  
+  fetchHoldings();
+  fetchTradeHistory();
+  fetchPortfolioChart();
+  
+  setInterval(() => {
+      fetchHoldings();
+      fetchTradeHistory();
+      fetchPortfolioChart();
+  }, 10000);
+  </script>
+  
 
 {% endblock %}

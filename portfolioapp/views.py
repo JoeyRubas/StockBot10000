@@ -24,13 +24,13 @@ LOG_FILE_PATH = "autonomous_trading_log.txt"
 
 @login_required
 def session_list(request):
-    sessions = SimulationSession.objects.filter(user=request.user).order_by('-created_at')
-    return render(request, 'session_list.html', {'sessions': sessions})
+    sessions = SimulationSession.objects.filter(user=request.user).order_by("-created_at")
+    return render(request, "session_list.html", {"sessions": sessions})
 
 
 @login_required
 def create_session(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = SessionForm(request.POST)
         if form.is_valid():
             session = form.save(commit=False)
@@ -38,14 +38,12 @@ def create_session(request):
             session.portfolio = Portfolio.objects.create(cash=session.amount)
             session.save()
             form.save_m2m()
+            session.portfolio.log_portfolio_value()
 
             # Start trading in a background thread
             Thread(target=start_trade_for_session, args=(session.id,)).start()
 
-            # Wait briefly to allow trades to be created
-            time.sleep(2)  # ← This is the fix
-
-            return redirect('view_session', pk=session.id)
+            return redirect("view_session", pk=session.id)
     else:
         form = SessionForm()
     return render(request, "create_session.html", {"form": form})
@@ -54,8 +52,7 @@ def create_session(request):
 @login_required
 def view_session(request, pk):
     session = get_object_or_404(SimulationSession, pk=pk, user=request.user)
-    trades = TradeLog.objects.filter(session=session).order_by("timestamp")
-    return render(request, "view_session.html", {"session": session, "trades": trades})
+    return render(request, "view_session.html", {"session": session})
 
 
 @login_required
@@ -104,13 +101,11 @@ def sell(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
+
 @login_required
 def portfolio_value_data(request, pk):
     logs = PortfolioLog.objects.filter(portfolio__session__id=pk).order_by("timestamp")
-    data = [
-        {"x": log.timestamp, "y": log.total_value}
-        for log in logs
-    ]
+    data = [{"x": log.timestamp, "y": log.total_value} for log in logs]
     return JsonResponse(data, safe=False)
 
 
@@ -123,13 +118,11 @@ def stock_search_api(request):
             stock = yf.Ticker(query)
             info = stock.info
             if "shortName" in info:
-                results.append({
-                    "symbol": query,
-                    "name": info["shortName"]
-                })
+                results.append({"symbol": query, "name": info["shortName"]})
         except Exception:
             pass
     return JsonResponse(results, safe=False)
+
 
 def search_stocks(request):
     query = request.GET.get("q", "").strip().upper()
@@ -155,15 +148,39 @@ def search_stocks(request):
 
     return JsonResponse(results, safe=False)
 
+
 def search_stocks(request):
     query = request.GET.get("q", "").upper()
-    matches = [{"symbol": "AAPL", "name": "Apple Inc."}, {"symbol": "MSFT", "name": "Microsoft Corp"}, {"symbol": "GOOGL", "name": "Alphabet Inc."}]
+    matches = [
+        {"symbol": "AAPL", "name": "Apple Inc."},
+        {"symbol": "MSFT", "name": "Microsoft Corp"},
+        {"symbol": "GOOGL", "name": "Alphabet Inc."},
+    ]
     filtered = [m for m in matches if query in m["symbol"]]
     return JsonResponse(filtered, safe=False)
+
 
 @login_required
 def get_holdings(request, pk):
     session = get_object_or_404(SimulationSession, pk=pk, user=request.user)
-    holdings = session.portfolio.holdings.values("ticker").annotate(total=Sum("shares"))
-    data = [{"ticker": h["ticker"], "shares": h["total"]} for h in holdings]
+    holdings = session.portfolio.holdings.values("ticker", "share_price").annotate(total=Sum("shares"))
+    data = [{"ticker": h["ticker"], "shares": h["total"], "value": h["total"] * h["share_price"]} for h in holdings]
+    data.append({"ticker": "Cash", "shares": "N/A", "value": session.portfolio.cash})
+    return JsonResponse(data, safe=False)
+
+@login_required
+def get_trades(request, pk):
+    session = get_object_or_404(SimulationSession, pk=pk, user=request.user)
+    trades = TradeLog.objects.filter(session=session).order_by("timestamp")
+    data = [{
+        "timestamp": trade.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        "action": trade.action,
+        "symbol": trade.symbol,
+        "shares": trade.shares,
+        "price": trade.price,
+        "reasoning": trade.reasoning,
+    } for trade in trades]
+
+
+
     return JsonResponse(data, safe=False)
