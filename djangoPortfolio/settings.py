@@ -40,7 +40,7 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "fallback-dev-key")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["stockbot10000-5e60e73638a9.herokuapp.com", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["stockbot10000-5e60e73638a9.herokuapp.com", "localhost", "127.0.0.1", "web-production-6a556.up.railway.app"]
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
