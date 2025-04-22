@@ -5,18 +5,22 @@
 <a href="{% url 'create_session' %}" class="text-blue-500 underline mb-4 inline-block">+ New Simulation</a>
 
 <div id="session-list">
-    <ul>
-        {% for session in sessions %}
-          <li>
-            <a href="{% url 'view_session' session.id %}">
-              {% if session.name %}
-                {{ session.name }}
-              {% else %}
-                Session #{{ session.id }}
-              {% endif %}
-            </a>
-          </li>
-        {% endfor %}
-    </ul>      
+  <ul>
+    {% for session in sessions %}
+      <li class="flex items-center justify-between">
+        <a href="{% url 'view_session' session.id %}">
+          {% if session.name %}
+            {{ session.name }}
+          {% else %}
+            Session #{{ session.id }}
+          {% endif %}
+        </a>
+        <form method="post" action="{% url 'delete_session' session.id %}" onsubmit="return confirm('Are you sure you want to delete this session?');">
+          {% csrf_token %}
+          <button type="submit" class="ml-4 text-red-500 hover:underline text-sm">Delete</button>
+        </form>
+      </li>
+    {% endfor %}
+</ul>     
 </div>
 {% endblock %}
