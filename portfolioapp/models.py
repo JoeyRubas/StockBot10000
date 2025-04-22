@@ -116,6 +116,7 @@ class SimulationSession(models.Model):
     use_price_history = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     stocks = models.ManyToManyField(Stock, blank=True)
+    name = models.CharField(max_length=100, unique=True, default = "Untitled Session")
 
 
 class Position(models.Model):

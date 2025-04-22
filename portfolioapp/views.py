@@ -35,6 +35,12 @@ def create_session(request):
         if form.is_valid():
             session = form.save(commit=False)
             session.user = request.user
+
+            # Handle duplicate name validation manually
+            if SimulationSession.objects.filter(name=session.name).exists():
+                form.add_error("name", "This session name already exists.")
+                return render(request, "create_session.html", {"form": form})
+
             session.portfolio = Portfolio.objects.create(cash=session.amount)
             session.save()
             form.save_m2m()

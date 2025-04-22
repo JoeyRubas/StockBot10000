@@ -5,6 +5,18 @@
 <a href="{% url 'create_session' %}" class="text-blue-500 underline mb-4 inline-block">+ New Simulation</a>
 
 <div id="session-list">
-    {% include "partials/session_list_items.html" %}
+    <ul>
+        {% for session in sessions %}
+          <li>
+            <a href="{% url 'view_session' session.id %}">
+              {% if session.name %}
+                {{ session.name }}
+              {% else %}
+                Session #{{ session.id }}
+              {% endif %}
+            </a>
+          </li>
+        {% endfor %}
+    </ul>      
 </div>
 {% endblock %}
