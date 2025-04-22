@@ -172,11 +172,11 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_BEAT_SCHEDULE = {
     "log-all-portfolios-every-30-seconds": {
         "task": "portfolioapp.tasks.log_all_portfolios",
-        "schedule": 30.0,
+        "schedule": 90,
     },
     "adjust-positions-every-30-minutes": {
         "task": "portfolioapp.tasks.adjust_portfolios",
-        "schedule": 60 * 30,
+        "schedule": 60 * 5,
     },
 }
 

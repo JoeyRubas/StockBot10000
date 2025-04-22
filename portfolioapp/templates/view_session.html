@@ -39,7 +39,7 @@
               const tbody = document.getElementById("holdings-body");
               tbody.innerHTML = ""; 
               if (data.length === 0) {
-                  tbody.innerHTML = "<tr><td colspan='2'>No holdings</td></tr>";
+                  tbody.innerHTML = "<tr><td colspan='3'>No holdings</td></tr>";
               } else {
                   data.forEach(h => {
                       const row = document.createElement("tr");
@@ -57,7 +57,7 @@
               const tbody = document.getElementById("trades-body");
               tbody.innerHTML = ""; 
               if (data.length === 0) {
-                  tbody.innerHTML = "<tr><td colspan='5'>No trades</td></tr>";
+                  tbody.innerHTML = "<tr><td colspan='6'>No trades</td></tr>";
               } else {
                   data.forEach(h => {
                       const row = document.createElement("tr");
@@ -99,7 +99,9 @@
                       options: {
                           scales: {
                               x: { display: true, title: { display: true, text: 'Time' } },
-                              y: { display: true, title: { display: true, text: 'Value ($)' } }
+                              y: { display: true, 
+                                title: { display: true, text: 'Value ($)' },
+                                beginAtZero: true,}
                           }
                       }
                   });

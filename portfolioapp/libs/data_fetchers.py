@@ -4,6 +4,7 @@ from yfinance import Ticker
 from portfolioapp.libs.tickers import available_tickers
 from fuzzywuzzy import process
 from datetime import datetime
+import random
 
 
 use_logged_data = False
@@ -13,6 +14,50 @@ topics = ["STOCK MARKET NEWS", "POLITICS NEWS", "ECONOMICS NEWS", "TECH NEWS", "
 google_url = "https://news.google.com/rss/search?q={topic}&hl=en-US&gl=US&ceid=US:en"
 twitter_url = "https://news.google.com/rss/search?q=%24{topic}+site:twitter.com&hl=en-US&gl=US&ceid=US:en"
 
+class StockDataWrapper:
+    def __init__(self, simulation=False):
+        self.simulation = False
+        self.cached_data = {}
+        self.fetch()
+        self.simulation = simulation
+
+    def fetch(self):
+        for ticker in available_tickers:
+            if self.simulation:
+                cached = self.cached_data[ticker]
+                current_price = cached["currentPrice"] * (1 + (random.random() * 0.2 - 0.1))
+                day_high = max(cached["dayHigh"], current_price)
+                day_low = min(cached["dayLow"], current_price)
+                data = {
+                    "currentPrice": current_price,
+                    "previousClose": cached["previousClose"],
+                    "marketCap": cached["marketCap"],
+                    "volume": cached["volume"],
+                    "dayHigh": day_high,
+                    "dayLow": day_low,
+                }
+            else:
+                stock = Ticker(ticker)
+                info = stock.info
+                data = {
+                    "currentPrice": info.get("currentPrice"),
+                    "previousClose": info.get("previousClose"),
+                    "marketCap": info.get("marketCap"),
+                    "volume": info.get("volume"),
+                    "dayHigh": info.get("dayHigh"),
+                    "dayLow": info.get("dayLow"),
+                }
+            self.cached_data[ticker] = data
+                
+    def get(self, ticker, field):
+        if ticker not in available_tickers:
+            raise ValueError(f"Invalid ticker: {ticker}")
+        if field not in ["currentPrice", "previousClose", "marketCap", "volume", "dayHigh", "dayLow"]:
+            raise ValueError(f"Invalid field: {field}")
+        return self.cached_data[ticker][field]
+
+#Singleton instance for Stock Data Wrapper
+stock_data_wrapper = StockDataWrapper(simulation=True)
 
 class DataFetcher:
     def __init__(self, type, url=None, folder=None, info=""):
@@ -67,15 +112,11 @@ class DataFetcher:
         if self.type == "folder":
             return self.fetch(f"MARKET_DATA_{ticker}")
 
-        stock = Ticker(ticker)
-        info = stock.info
+        
         return {
-            "currentPrice": info.get("currentPrice"),
-            "previousClose": info.get("previousClose"),
-            "marketCap": info.get("marketCap"),
-            "volume": info.get("volume"),
-            "dayHigh": info.get("dayHigh"),
-            "dayLow": info.get("dayLow"),
+            "currentPrice": stock_data_wrapper(ticker, "currentPrice"),
+            "dayHigh": stock_data_wrapper(ticker, "dayHigh"),
+            "dayLow": stock_data_wrapper(ticker, "dayLow"),
         }
 
 
@@ -83,10 +124,3 @@ class DataFetcher:
 google_news_fetcher = DataFetcher(type="url", url=google_url)
 # Singleton instance for Twitter News
 twitter_news_fetcher = DataFetcher(type="url", url=twitter_url)
-
-
-def fetch_google_news():
-    try:
-        return {"news": google_news_fetcher.fetch("STOCK MARKET NEWS")}
-    except Exception as e:
-        return {"error": str(e)}

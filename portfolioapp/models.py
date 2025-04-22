@@ -1,6 +1,6 @@
 from django.db import models
 import time
-from yfinance import Ticker
+from portfolioapp.libs.data_fetchers import stock_data_wrapper
 from portfolioapp.libs.tickers import available_tickers
 from django.contrib.auth.models import User
 
@@ -20,11 +20,18 @@ class Portfolio(models.Model):
     def get_total_value(self):
         value = self.cash
         for pos in self.holdings.all():
-            current_price = Ticker(pos.ticker).info.get("currentPrice") or pos.share_price
+            current_price = stock_data_wrapper.get(pos.ticker, "currentPrice")
             value += pos.shares * current_price
         return value
 
     def log_portfolio_value(self):
+        last_log = self.logs.order_by("-timestamp").first()
+        value = self.get_total_value()
+        if last_log and last_log.total_value == value:
+            last_log.timestamp = time.time()
+            last_log.save()
+            return
+        
         PortfolioLog.objects.create(
             portfolio=self,
             total_value=self.get_total_value(),
@@ -32,8 +39,7 @@ class Portfolio(models.Model):
 
     def buy_stock(self, ticker, shares, session_id, reasoning="None provided"):
         ticker = ticker.upper()
-        stock = Ticker(ticker)
-        price = stock.info.get("currentPrice")
+        price = stock_data_wrapper.get(ticker, "currentPrice")
 
         if price is None:
             raise ValueError(f"Could not retrieve price for {ticker}")
@@ -65,7 +71,6 @@ class Portfolio(models.Model):
                                 reasoning=reasoning)
 
     def sell_stock(self, ticker, shares, session):
-        from yfinance import Ticker
 
         ticker = ticker.upper()
 
@@ -76,10 +81,8 @@ class Portfolio(models.Model):
         if shares > total:
             raise ValueError("Not enough shares")
 
-        stock = Ticker(ticker)
-        stock_info = stock.info
 
-        price = stock_info.get("regularMarketPrice") or stock_info.get("currentPrice")
+        price = stock_data_wrapper.get(ticker, "currentPrice")
 
         if price is None:
             raise ValueError(f"Could not retrieve price for {ticker}")

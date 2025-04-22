@@ -58,6 +58,10 @@ def view_session(request, pk):
 @login_required
 def delete_session(request, pk):
     session = get_object_or_404(SimulationSession, pk=pk, user=request.user)
+    portfolio = session.portfolio
+    if portfolio:
+        Position.objects.filter(portfolio=portfolio).delete()
+        portfolio.delete()
     session.delete()
     return redirect("session_list")
 
@@ -105,7 +109,7 @@ def sell(request):
 @login_required
 def portfolio_value_data(request, pk):
     logs = PortfolioLog.objects.filter(portfolio__session__id=pk).order_by("timestamp")
-    data = [{"x": log.timestamp, "y": log.total_value} for log in logs]
+    data = [{"x": log.timestamp, "y": round(log.total_value)} for log in logs]
     return JsonResponse(data, safe=False)
 
 

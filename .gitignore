@@ -7,4 +7,5 @@ firebase-credentials.json
 */daily_data/*
 db.sqlite3
 *log*
+log.txt
 *celerybeat*
