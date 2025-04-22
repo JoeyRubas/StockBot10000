@@ -74,3 +74,4 @@ autogen-agentchat==0.5.3
 autogen-ext==0.5.3
 celery
 django-celery-beat
+redis
