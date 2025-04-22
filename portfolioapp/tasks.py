@@ -8,7 +8,6 @@ from portfolioapp.libs.data_fetchers import stock_data_wrapper
 
 @shared_task
 def log_all_portfolios():
-    stock_data_wrapper.fetch()
     for portfolio in Portfolio.objects.all():
         portfolio.log_portfolio_value()
 

@@ -17,10 +17,8 @@ from portfolioapp.models import Portfolio, SimulationSession
 from portfolioapp.libs.data_fetchers import google_news_fetcher, twitter_news_fetcher
 from portfolioapp.libs.tickers import available_tickers
 
-# === Load Environment ===
 load_dotenv()
 
-# === Custom Client ===
 custom_model_client = OpenAIChatCompletionClient(
     model="openai/gpt-3.5-turbo",
     base_url="https://openrouter.ai/api/v1",
@@ -83,13 +81,13 @@ class LLMSession:
             return f"Buy failed: {str(e)}"
 
 
-    def sell(self, symbol: str, amount: float) -> str:
+    def sell(self, symbol: str, amount: float, reasoning : str) -> str:
         portfolio = self.portfolio
         if not portfolio:
             return "No active portfolio found."
         try:
             session = SimulationSession.objects.get(id=self.session_id)
-            result = portfolio.sell_stock(symbol, amount, session=session)
+            result = portfolio.sell_stock(symbol, amount, session=session, reasoning=reasoning)
             logging.debug(f"Sell result: {result}")
             return f"Successfully sold {amount} shares of {symbol}."
         except Exception as e:
@@ -137,7 +135,6 @@ class LLMSession:
         )
 
 
-    # === Async Group Chat Runner ===
     async def run_stockbot_group_chat(self, agent_configs, task):
         tools = [
             FunctionTool(self.buy, name="buy", description="Buy a stock."),

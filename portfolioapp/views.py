@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 import json
 import os
+from portfolioapp.libs.data_fetchers import stock_data_wrapper
 from portfolioapp.libs.LLM import start_trade_for_session
 from django.http import JsonResponse
 from .models import PortfolioLog
@@ -173,9 +174,36 @@ def search_stocks(request):
 @login_required
 def get_holdings(request, pk):
     session = get_object_or_404(SimulationSession, pk=pk, user=request.user)
-    holdings = session.portfolio.holdings.values("ticker", "share_price").annotate(total=Sum("shares"))
-    data = [{"ticker": h["ticker"], "shares": h["total"], "value": h["total"] * h["share_price"]} for h in holdings]
-    data.append({"ticker": "Cash", "shares": "N/A", "value": session.portfolio.cash})
+    cash = session.portfolio.get_and_update_cash()
+    tickers_held = set(session.portfolio.holdings.values_list("ticker", flat=True))
+    data = [{"ticker": "Cash",
+              "shares": "N/A", 
+              "total_purchase_price": "N/A",
+              "value": round(cash),
+              "change": "N/A"}]
+    for ticker in tickers_held:
+        shares = 0
+        total_purchase_price = 0
+        for position in session.portfolio.holdings.filter(ticker=ticker):
+            shares += position.shares
+            total_purchase_price += position.shares * position.share_price_at_purchase
+        total_purchase_price = round(total_purchase_price, 2)
+        price = stock_data_wrapper.get(ticker, "currentPrice")
+        data.append({
+            "ticker": ticker,
+            "shares": shares,
+            "total_purchase_price": total_purchase_price,
+            "value": round(shares * price, 2),
+            "change": round(price - position.share_price_at_purchase, 2),
+        })
+    value = round(sum([d["value"] for d in data]),2)
+    data.append({
+        "ticker": "Total",
+        "shares": "N/A",
+        "total_purchase_price": "N/A",
+        "value": value,
+        "change": round(value - session.amount)
+    })
     return JsonResponse(data, safe=False)
 
 @login_required
@@ -183,12 +211,13 @@ def get_trades(request, pk):
     session = get_object_or_404(SimulationSession, pk=pk, user=request.user)
     trades = TradeLog.objects.filter(session=session).order_by("timestamp")
     data = [{
-        "timestamp": trade.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        "timestamp": trade.timestamp.strftime("%H:%M"),
         "action": trade.action,
         "symbol": trade.symbol,
         "shares": trade.shares,
-        "price": trade.price,
+        "total_price": trade.total_price,
         "reasoning": trade.reasoning,
+        "profit": trade.profit,
     } for trade in trades]
 
 

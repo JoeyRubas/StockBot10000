@@ -6,12 +6,12 @@
 <table class="w-full text-left border mt-2">
   <thead>
     <tr>
-      <th>Time</th><th>Action</th><th>Symbol</th><th>Shares</th><th>Price</th><th>Reasoning</th>
+      <th>Time</th><th>Action</th><th>Symbol</th><th>Shares</th><th>Price</th><th>Profit</th><th>Reasoning</th>
     </tr>
   </thead>
   <tbody>
     <tbody id="trades-body">
-      <tr><td colspan="6">Loading...</td></tr>
+      <tr><td colspan="7">Loading...</td></tr>
     </tbody>
   </tbody>
 </table>
@@ -19,11 +19,11 @@
 <table class="w-full text-left border mt-2" id="holdings-table">
   <thead>
     <tr>
-      <th>Symbol</th><th>Shares</th><th>Value</th>
+      <th>Symbol</th><th>Shares</th><th>Purchase Price</th><th>Value</th><th>Change</th>
     </tr>
   </thead>
   <tbody id="holdings-body">
-    <tr><td colspan="3">Loading...</td></tr>
+    <tr><td colspan="4">Loading...</td></tr>
   </tbody>
 </table>
 
@@ -43,7 +43,11 @@
               } else {
                   data.forEach(h => {
                       const row = document.createElement("tr");
-                      row.innerHTML = `<td>${h.ticker}</td><td>${h.shares}</td><td>$${h.value.toFixed(2)}</td>`;
+                      row.innerHTML = `<td>${h.ticker}</td>
+                      <td>${h.shares}</td>
+                      <td>${h.total_purchase_price}</td>
+                      <td>${h.value}</td>
+                      <td>${h.change}</td>`;
                       tbody.appendChild(row);
                   });
               }
@@ -57,11 +61,18 @@
               const tbody = document.getElementById("trades-body");
               tbody.innerHTML = ""; 
               if (data.length === 0) {
-                  tbody.innerHTML = "<tr><td colspan='6'>No trades</td></tr>";
+                  tbody.innerHTML = "<tr><td colspan='7'>No trades</td></tr>";
               } else {
                   data.forEach(h => {
                       const row = document.createElement("tr");
-                      row.innerHTML = `<td>${h.timestamp}</td><td>${h.action}</td><td>${h.symbol}</td><td>${h.shares}</td><td>$${h.price.toFixed(2)}</td><td>${h.reasoning}</td>`;
+                      row.innerHTML = `
+                      <td>${h.timestamp}</td>
+                      <td>${h.action}</td>
+                      <td>${h.symbol}</td>
+                      <td>${h.shares}</td>
+                      <td>$${h.total_price.toFixed(2)}</td>
+                      <td>$${h.profit.toFixed(2)}</td>
+                      <td>${h.reasoning}</td>`;
                       tbody.appendChild(row);
                   });
               }

@@ -117,9 +117,18 @@ WSGI_APPLICATION = "djangoPortfolio.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    "default": dj_database_url.config(default=os.environ.get("DATABASE_URL"), conn_max_age=600, ssl_require=True)
+if os.environ.get("LOCAL") == "True":
+    print("Using local database settings")
+    DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 }
+else:
+    DATABASES = {
+        "default": dj_database_url.config(default=os.environ.get("DATABASE_URL"), conn_max_age=600, ssl_require=True)
+    }
 
 
 # Password validation
@@ -173,12 +182,12 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_BEAT_SCHEDULE = {
     "log-all-portfolios-every-30-seconds": {
         "task": "portfolioapp.tasks.log_all_portfolios",
-        "schedule": 90,
+        "schedule": 60* 3,
     },
     "adjust-positions-every-30-minutes": {
         "task": "portfolioapp.tasks.adjust_portfolios",
-        "schedule": 60 * 5,
+        "schedule": 60 * 15,
     },
 }
 
-CELERY_BROKER_URL = "redis://default:PONMJSdfEmGuGLnCpKtsxjedprIyYEZw@redis.railway.internal:6379"
+CELERY_BROKER_URL = "redis://localhost:6379/0"

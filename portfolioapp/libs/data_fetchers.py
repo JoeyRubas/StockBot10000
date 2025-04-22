@@ -1,12 +1,15 @@
 import json
+import os
+import time
 import feedparser
 from yfinance import Ticker
 from portfolioapp.libs.tickers import available_tickers
 from fuzzywuzzy import process
 from datetime import datetime
 import random
+from dotenv import load_dotenv
 
-
+load_dotenv()
 use_logged_data = False
 topics = ["STOCK MARKET NEWS", "POLITICS NEWS", "ECONOMICS NEWS", "TECH NEWS", "BUSINESS NEWS"] + available_tickers
 
@@ -21,9 +24,9 @@ class StockDataWrapper:
         self.fetch()
         self.simulation = simulation
 
-    def fetch(self):
-        for ticker in available_tickers:
-            if self.simulation:
+    def fetch_ticker(self, ticker):
+        if self.simulation:
+                print(f"Simulating data fetch for {ticker}")
                 cached = self.cached_data[ticker]
                 current_price = cached["currentPrice"] * (1 + (random.random() * 0.2 - 0.1))
                 day_high = max(cached["dayHigh"], current_price)
@@ -35,29 +38,43 @@ class StockDataWrapper:
                     "volume": cached["volume"],
                     "dayHigh": day_high,
                     "dayLow": day_low,
+                    "LastUpdated": time.time(),
                 }
-            else:
-                stock = Ticker(ticker)
-                info = stock.info
-                data = {
-                    "currentPrice": info.get("currentPrice"),
-                    "previousClose": info.get("previousClose"),
-                    "marketCap": info.get("marketCap"),
-                    "volume": info.get("volume"),
-                    "dayHigh": info.get("dayHigh"),
-                    "dayLow": info.get("dayLow"),
-                }
-            self.cached_data[ticker] = data
+        else:
+            stock = Ticker(ticker)
+            info = stock.info
+            data = {
+                "currentPrice": info.get("currentPrice"),
+                "previousClose": info.get("previousClose"),
+                "marketCap": info.get("marketCap"),
+                "volume": info.get("volume"),
+                "dayHigh": info.get("dayHigh"),
+                "dayLow": info.get("dayLow"),
+                "LastUpdated": time.time(),
+            }
+        return data
+
+    def fetch(self):
+        tickers = set(available_tickers)
+        for ticker in tickers:
+            self.cached_data[ticker] = self.fetch_ticker(ticker)
                 
     def get(self, ticker, field):
         if ticker not in available_tickers:
             raise ValueError(f"Invalid ticker: {ticker}")
+        elif ticker not in self.cached_data:
+            self.cached_data[ticker] = self.fetch_ticker(ticker)
+        
+        cached_data = self.cached_data[ticker]
+        if cached_data["LastUpdated"] + 120 < time.time():
+            self.cached_data[ticker] = self.fetch_ticker(ticker)
+        
         if field not in ["currentPrice", "previousClose", "marketCap", "volume", "dayHigh", "dayLow"]:
             raise ValueError(f"Invalid field: {field}")
         return self.cached_data[ticker][field]
 
 #Singleton instance for Stock Data Wrapper
-stock_data_wrapper = StockDataWrapper(simulation=True)
+stock_data_wrapper = StockDataWrapper(os.getenv("SIMULATION", "False") == "True")
 
 class DataFetcher:
     def __init__(self, type, url=None, folder=None, info=""):

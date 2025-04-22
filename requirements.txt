@@ -75,3 +75,4 @@ autogen-ext==0.5.3
 celery
 django-celery-beat
 redis
+python-Levenshtein

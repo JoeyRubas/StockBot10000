@@ -24,7 +24,7 @@ class SimulationSessionAdmin(admin.ModelAdmin):
 
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
-    list_display = ("id", "portfolio", "ticker", "shares", "share_price", "purchase_timestamp", "session")
+    list_display = ("id", "portfolio", "ticker", "shares", "share_price_at_purchase", "purchase_timestamp", "session")
     list_filter = ("ticker",)
     search_fields = ("ticker",)
 
@@ -37,7 +37,7 @@ class PortfolioLogAdmin(admin.ModelAdmin):
 
 @admin.register(TradeLog)
 class TradeLogAdmin(admin.ModelAdmin):
-    list_display = ("id", "session", "action", "symbol", "shares", "price", "timestamp")
+    list_display = ("id", "session", "action", "symbol", "shares", "total_price", "timestamp")
     list_filter = ("action",)
     search_fields = ("symbol",)
     readonly_fields = ("timestamp",)

@@ -17,8 +17,21 @@ class Portfolio(models.Model):
     cash = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def get_and_update_cash(self):
+        cash = self.session.amount
+        for trade in self.session.logs.all():
+            if trade.action == "buy":
+                cash -= trade.total_price
+            elif trade.action == "sell":
+                cash += trade.total_price
+        self.cash = cash
+        self.save()
+        return cash
+
     def get_total_value(self):
-        value = self.cash
+        
+        value = self.get_and_update_cash(self)
+
         for pos in self.holdings.all():
             current_price = stock_data_wrapper.get(pos.ticker, "currentPrice")
             value += pos.shares * current_price
@@ -55,54 +68,65 @@ class Portfolio(models.Model):
             session=session,
             ticker=ticker,
             shares=shares,
-            share_price=price,
+            share_price_at_purchase=price,
             purchase_timestamp=time.time(),
         )
-
-        self.cash -= shares * price
-        self.save()
-        self.log_portfolio_value()
 
         TradeLog.objects.create(session=session, 
                                 action="buy", 
                                 symbol=ticker, 
                                 shares=shares, 
-                                price=price, 
+                                total_price=shares * price,
+                                share_price=price,
+                                profit=0, 
                                 reasoning=reasoning)
+        
+        self.get_and_update_cash()
+        self.save()
 
-    def sell_stock(self, ticker, shares, session):
+    def sell_stock(self, ticker, shares, session, reasoning="None provided"):
 
         ticker = ticker.upper()
-
         if ticker not in available_tickers:
             raise ValueError("Invalid ticker")
-
         total = sum(p.shares for p in self.holdings.filter(ticker=ticker))
         if shares > total:
             raise ValueError("Not enough shares")
-
-
+        
         price = stock_data_wrapper.get(ticker, "currentPrice")
 
         if price is None:
             raise ValueError(f"Could not retrieve price for {ticker}")
 
-        self.cash += shares * price
         remaining = shares
+        profit = 0
 
         for p in self.holdings.filter(ticker=ticker).order_by("purchase_timestamp"):
             if p.shares <= remaining:
                 remaining -= p.shares
+                profit += (price - p.share_price) * p.shares
+                self.cash += p.shares * price
                 p.delete()
             else:
                 p.shares -= remaining
+                profit += (price - p.share_price) * remaining
+                self.cash += remaining * price
+                remaining = 0
                 p.save()
                 break
 
         self.save()
         self.log_portfolio_value()
 
-        TradeLog.objects.create(session=session, action="sell", symbol=ticker, shares=shares, price=price)
+        TradeLog.objects.create(session=session,
+                                 action="sell",
+                                 symbol=ticker, 
+                                 shares=shares, 
+                                 total_price=shares * price,
+                                 share_price=price,
+                                 profit=profit,
+                                 reasoning=reasoning
+                                 )
 
         return price * shares
 
@@ -123,7 +147,7 @@ class Position(models.Model):
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="holdings")
     ticker = models.CharField(max_length=10)
     shares = models.FloatField()
-    share_price = models.FloatField()
+    share_price_at_purchase = models.FloatField()
     purchase_timestamp = models.FloatField(default=time.time)
     session = models.ForeignKey(SimulationSession, on_delete=models.CASCADE, related_name="trades", null=True)
 
@@ -139,6 +163,8 @@ class TradeLog(models.Model):
     action = models.CharField(max_length=10)  # "buy" or "sell"
     symbol = models.CharField(max_length=10)
     shares = models.FloatField()
-    price = models.FloatField()
+    total_price = models.FloatField()
+    share_price = models.FloatField()
+    profit = models.FloatField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     reasoning = models.TextField(null=True, blank=True)
