@@ -1,3 +1,3 @@
-web: gunicorn wsgi:application
-worker: celery -A stockbot10000 worker --loglevel=info
-beat: celery -A stockbot10000 beat --loglevel=info
+web: gunicorn djangoPortfolio.wsgi:application
+worker: celery -A djangoPortfolio worker --loglevel=info
+beat: celery -A djangoPortfolio beat --loglevel=info
