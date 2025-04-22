@@ -29,6 +29,7 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 <script>
   const sessionId = "{{ session.id }}";
   
@@ -82,43 +83,85 @@
   let chart; 
   
   function fetchPortfolioChart() {
-      fetch(`/session/${sessionId}/value-data/`)
-          .then(res => res.json())
-          .then(data => {
-              const timestamps = data.map(entry => new Date(entry.x * 1000).toLocaleString());
-              const values = data.map(entry => entry.y);
-  
-              const ctx = document.getElementById('portfolioChart').getContext('2d');
-  
-              if (chart) {
-                  chart.data.labels = timestamps;
-                  chart.data.datasets[0].data = values;
-                  chart.update();
-              } else {
-                  chart = new Chart(ctx, {
-                      type: 'line',
-                      data: {
-                          labels: timestamps,
-                          datasets: [{
-                              label: 'Portfolio Value ($)',
-                              data: values,
-                              borderWidth: 2,
-                              fill: true,
-                              tension: 0.3
-                          }]
-                      },
-                      options: {
-                          scales: {
-                              x: { display: true, title: { display: true, text: 'Time' } },
-                              y: { display: true, 
-                                title: { display: true, text: 'Value ($)' },
-                                beginAtZero: true,}
-                          }
-                      }
-                  });
-              }
+    fetch(`/session/${sessionId}/value-data/`)
+        .then(res => res.json())
+        .then(data => {
+    const timestamps = data.map(entry => entry.x);  
+    const values = data.map(entry => entry.y);
+
+    const ctx = document.getElementById('portfolioChart').getContext('2d');
+
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const range = maxValue - minValue;
+    const padding = range * 0.25;
+    const suggestedMin = minValue - padding;
+    const suggestedMax = maxValue + padding;
+
+    const chartData = data.map(entry => ({
+    x: new Date(entry.x * 1000),
+    y: entry.y
+  }));
+
+    if (chart) {
+        chart.data.datasets[0].data = chartData;
+        chart.options.scales.y.suggestedMin = suggestedMin;
+        chart.options.scales.y.suggestedMax = suggestedMax;
+        chart.update();
+    } else {
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Portfolio Value ($)',
+                    data: chartData,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+    interaction: {
+        mode: 'index',
+        intersect: false,
+    },
+    plugins: {
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    const label = context.dataset.label || '';
+                    const value = context.parsed.y;
+                    return `${label}: $${value.toFixed(2)}`;
+                },
+                title: function(context) {
+                    const date = context[0].parsed.x;
+                    return new Date(date).toLocaleString();
+                }
+            }
+        }
+    },
+    scales: {
+        x: {
+            type: 'time',
+            time: {
+                unit: 'hour',
+                tooltipFormat: 'MM/dd/yyyy HH:mm',
+            },
+            title: { display: true, text: 'Time' }
+        },
+        y: {
+            title: { display: true, text: 'Value ($)' },
+            suggestedMin: suggestedMin,
+            suggestedMax: suggestedMax,
+        }
+    }
+}
+
           });
+      }
+    });
   }
+
   
   fetchHoldings();
   fetchTradeHistory();

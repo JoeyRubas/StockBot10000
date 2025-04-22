@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.contrib import admin
 from .models import Stock, Portfolio, SimulationSession, Position, PortfolioLog, TradeLog
 
@@ -28,16 +29,27 @@ class PositionAdmin(admin.ModelAdmin):
     list_filter = ("ticker",)
     search_fields = ("ticker",)
 
+    @admin.register(PortfolioLog)
+    class PortfolioLogAdmin(admin.ModelAdmin):
+        list_display = ("id", "portfolio", "get_timestamp", "total_value")
+        readonly_fields = ("timestamp",)
+        ordering = ('-timestamp',)
 
-@admin.register(PortfolioLog)
-class PortfolioLogAdmin(admin.ModelAdmin):
-    list_display = ("id", "portfolio", "timestamp", "total_value")
-    readonly_fields = ("timestamp",)
+        def get_timestamp(self, obj):
+            return datetime.fromtimestamp(obj.timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        get_timestamp.admin_order_field = 'timestamp'
+        get_timestamp.short_description = 'Timestamp'
 
 
-@admin.register(TradeLog)
-class TradeLogAdmin(admin.ModelAdmin):
-    list_display = ("id", "session", "action", "symbol", "shares", "total_price", "timestamp")
-    list_filter = ("action",)
-    search_fields = ("symbol",)
-    readonly_fields = ("timestamp",)
+    @admin.register(TradeLog)
+    class TradeLogAdmin(admin.ModelAdmin):
+        list_display = ("id", "session", "action", "symbol", "shares", "total_price", "get_timestamp")
+        list_filter = ("action",)
+        search_fields = ("symbol",)
+        readonly_fields = ("timestamp",)
+        ordering = ('-timestamp',)
+
+        def get_timestamp(self, obj):
+            return datetime.fromtimestamp(obj.timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        get_timestamp.admin_order_field = 'timestamp'
+        get_timestamp.short_description = 'Timestamp'

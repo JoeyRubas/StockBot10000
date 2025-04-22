@@ -30,7 +30,7 @@ class Portfolio(models.Model):
 
     def get_total_value(self):
         
-        value = self.get_and_update_cash(self)
+        value = self.get_and_update_cash()
 
         for pos in self.holdings.all():
             current_price = stock_data_wrapper.get(pos.ticker, "currentPrice")
@@ -89,6 +89,7 @@ class Portfolio(models.Model):
         ticker = ticker.upper()
         if ticker not in available_tickers:
             raise ValueError("Invalid ticker")
+        
         total = sum(p.shares for p in self.holdings.filter(ticker=ticker))
         if shares > total:
             raise ValueError("Not enough shares")
@@ -104,19 +105,20 @@ class Portfolio(models.Model):
         for p in self.holdings.filter(ticker=ticker).order_by("purchase_timestamp"):
             if p.shares <= remaining:
                 remaining -= p.shares
-                profit += (price - p.share_price) * p.shares
+                profit += (price - p.share_price_at_purchase) * p.shares
                 self.cash += p.shares * price
                 p.delete()
             else:
                 p.shares -= remaining
-                profit += (price - p.share_price) * remaining
+                profit += (price - p.share_price_at_purchase) * remaining
                 self.cash += remaining * price
                 remaining = 0
+                self.save()
                 p.save()
                 break
 
         self.save()
-        self.log_portfolio_value()
+        
 
         TradeLog.objects.create(session=session,
                                  action="sell",
@@ -125,8 +127,8 @@ class Portfolio(models.Model):
                                  total_price=shares * price,
                                  share_price=price,
                                  profit=profit,
-                                 reasoning=reasoning
-                                 )
+                                 reasoning=reasoning)
+        self.log_portfolio_value()
 
         return price * shares
 

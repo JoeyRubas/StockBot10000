@@ -181,6 +181,7 @@ def get_holdings(request, pk):
               "total_purchase_price": "N/A",
               "value": round(cash),
               "change": "N/A"}]
+    
     for ticker in tickers_held:
         shares = 0
         total_purchase_price = 0
@@ -196,6 +197,7 @@ def get_holdings(request, pk):
             "value": round(shares * price, 2),
             "change": round(price - position.share_price_at_purchase, 2),
         })
+        
     value = round(sum([d["value"] for d in data]),2)
     data.append({
         "ticker": "Total",

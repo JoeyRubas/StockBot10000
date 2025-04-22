@@ -14,9 +14,6 @@ use_logged_data = False
 topics = ["STOCK MARKET NEWS", "POLITICS NEWS", "ECONOMICS NEWS", "TECH NEWS", "BUSINESS NEWS"] + available_tickers
 
 
-google_url = "https://news.google.com/rss/search?q={topic}&hl=en-US&gl=US&ceid=US:en"
-twitter_url = "https://news.google.com/rss/search?q=%24{topic}+site:twitter.com&hl=en-US&gl=US&ceid=US:en"
-
 class StockDataWrapper:
     def __init__(self, simulation=False):
         self.simulation = False
@@ -74,7 +71,13 @@ class StockDataWrapper:
         return self.cached_data[ticker][field]
 
 #Singleton instance for Stock Data Wrapper
-stock_data_wrapper = StockDataWrapper(os.getenv("SIMULATION", "False") == "True")
+simulation_enabled = os.getenv("SIMULATION", "False") == "True"
+stock_data_wrapper = StockDataWrapper(True)
+
+
+google_url = "https://news.google.com/rss/search?q={topic}&hl=en-US&gl=US&ceid=US:en"
+twitter_url = "https://news.google.com/rss/search?q=%24{topic}+site:twitter.com&hl=en-US&gl=US&ceid=US:en"
+
 
 class DataFetcher:
     def __init__(self, type, url=None, folder=None, info=""):
