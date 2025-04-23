@@ -20,7 +20,7 @@ load_dotenv()
 import logging
 
 logging.basicConfig(
-    filename="log.txt", filemode="a", format="%(asctime)s [%(levelname)s] %(message)s", level=logging.DEBUG
+    filename="log.txt", filemode="a", format="%(asctime)s [%(levelname)s] %(message)s", level=logging.ERROR
 )
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -182,7 +182,7 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_BEAT_SCHEDULE = {
     "log-all-portfolios-every-30-seconds": {
         "task": "portfolioapp.tasks.log_all_portfolios",
-        "schedule": 60* 5,
+        "schedule": 60* 3,
     },
     "adjust-positions-every-30-minutes": {
         "task": "portfolioapp.tasks.adjust_portfolios",

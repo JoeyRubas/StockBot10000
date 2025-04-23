@@ -73,6 +73,11 @@ class LLMSession:
         if not portfolio:
             logging.error("Buy failed: No active portfolio found.")
             return "No active portfolio found."
+        symbol = symbol.upper()
+        if symbol not in available_tickers:
+            logging.error(f"Buy failed: {symbol} is not a valid ticker.")
+            return f"{symbol} is not a valid ticker."
+        
         try:
             result = portfolio.buy_stock(symbol, amount, session_id=self.session_id, reasoning=reasoning)
             logging.debug(f"Buy result: {result}")
@@ -86,6 +91,9 @@ class LLMSession:
         portfolio = self.portfolio
         if not portfolio:
             return "No active portfolio found."
+        if symbol not in available_tickers:
+            logging.error(f"Sell failed: {symbol} is not a valid ticker.")
+            return f"{symbol} is not a valid ticker."
         try:
             session = SimulationSession.objects.get(id=self.session_id)
             result = portfolio.sell_stock(symbol, amount, session=session, reasoning=reasoning)
@@ -104,7 +112,7 @@ class LLMSession:
         logging.debug(f"Current portfolio holdings: {holdings}")
         return [{"ticker": h.ticker, 
                  "shares": h.shares,
-                 "co": h.share_price_at_purchase,
+                 "purchase_price": h.share_price_at_purchase,
                  "current_share_price" : stock_data_wrapper.get(h.ticker, self.session.simulated_date)} 
                                                                 for h in holdings]
 

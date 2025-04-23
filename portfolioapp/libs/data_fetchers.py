@@ -14,31 +14,30 @@ load_dotenv()
 use_logged_data = False
 topics = ["STOCK MARKET NEWS", "POLITICS NEWS", "ECONOMICS NEWS", "TECH NEWS", "BUSINESS NEWS"] + available_tickers
 
-
-import yfinance as yf
-from datetime import datetime
-from portfolioapp.libs.tickers import available_tickers
-
 class StockDataWrapper:
     def __init__(self):
-        self.cached_data = {}
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        for ticker in available_tickers:
-            self.cached_data[ticker] = {}
-            df = yf.download(ticker, start='2024-01-01', end=today_str)
-            for index, row in df.iterrows():
-                date_str = index.strftime("%Y-%m-%d")
-                self.cached_data[ticker][date_str] = float(row['Close'].iloc[0])
+        self.cache = {}
 
     def get(self, ticker, date):
-        if ticker not in available_tickers:
-            raise ValueError(f"Invalid ticker: {ticker}")
+        normalized_date = pd.to_datetime(date)
+        date_str = normalized_date.strftime("%Y-%m-%d")
+        next_day_str = (normalized_date + timedelta(days=1)).strftime("%Y-%m-%d")
 
-        date_str = date.strftime("%Y-%m-%d")
-        if date_str not in self.cached_data.get(ticker, {}):
+        if ticker in self.cache and date_str in self.cache[ticker]:
+            return self.cache[ticker][date_str]
+        
+        
+        df = yf.download(ticker, start=date_str, end=next_day_str, progress=False)
+
+        if df.empty:
+            print(df)
             raise ValueError(f"No data available for {ticker} on {date_str}")
+        value = round(float(df['Close'].iloc[0].item()), 2)
+        if ticker not in self.cache:
+            self.cache[ticker] = {}
+        self.cache[ticker][date_str] = value
 
-        return self.cached_data[ticker][date_str]
+        return value
 
 
 

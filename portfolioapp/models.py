@@ -46,6 +46,9 @@ class Portfolio(models.Model):
 
     def buy_stock(self, ticker, shares, session_id, reasoning="None provided"):
         ticker = ticker.upper()
+        if ticker not in available_tickers:
+            raise ValueError("Invalid ticker")
+        
         price = stock_data_wrapper.get(ticker, self.session.simulated_date)
 
         if price is None:
@@ -79,20 +82,23 @@ class Portfolio(models.Model):
         self.get_and_update_cash()
         self.save()
 
-    def sell_stock(self, ticker, shares, session, reasoning="None provided"):
+    def sell_stock(self, ticker, shares, session, reasoning="None provided", force=False):
 
         ticker = ticker.upper()
-        if ticker not in available_tickers:
+        if ticker not in available_tickers and not force:
             raise ValueError("Invalid ticker")
         
         total = sum(p.shares for p in self.holdings.filter(ticker=ticker))
         if shares > total:
             raise ValueError("Not enough shares")
-        
-        price = stock_data_wrapper.get(ticker, self.session.simulated_date)
+        try:
+            price = stock_data_wrapper.get(ticker, self.session.simulated_date)
 
-        if price is None:
-            raise ValueError(f"Could not retrieve price for {ticker}")
+        except:
+            if not force:
+                raise ValueError(f"Could not retrieve price for {ticker}")
+            price = self.holdings.filter(ticker=ticker).order_by("-purchase_timestamp").first().share_price_at_purchase
+        
 
         remaining = shares
         profit = 0

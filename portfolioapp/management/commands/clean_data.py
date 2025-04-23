@@ -1,20 +1,25 @@
 from django.core.management.base import BaseCommand
 from portfolioapp import scheduler
-from portfolioapp.models import PortfolioLog
+from portfolioapp.models import TradeLog, SimulationSession
 from datetime import datetime, timedelta
+from portfolioapp.libs.tickers import available_tickers
 
 class Command(BaseCommand):
-    
+    def _ignore():
+        sessions = SimulationSession.objects.all()
+        for session in sessions:
+            last_trade = TradeLog.objects.filter(session=session).order_by('-timestamp').first()
+            print(last_trade.timestamp)
+            session.simulated_date = last_trade.timestamp + timedelta(days=1)
+            session.save()
+
     def handle(self, *args, **kwargs):
-        logs = PortfolioLog.objects.all().order_by('portfolio', 'portfolio__session', 'timestamp')
-        previous_log = None
-
-        for log in logs:
-            if previous_log:
-                time_diff = abs(log.timestamp - previous_log.timestamp)
-                same_portfolio = log.portfolio == previous_log.portfolio
-                same_session = log.portfolio.session == previous_log.portfolio.session
-
-                if time_diff < 120 and (same_portfolio or same_session):
-                    previous_log.delete()
-            previous_log = log
+        for session in SimulationSession.objects.all():
+            portfolio = session.portfolio
+            for position in portfolio.holdings.all():
+                if position.ticker not in available_tickers:
+                    portfolio.sell_stock(position.ticker, 
+                                         position.shares, 
+                                         session=session,
+                                         reasoning="Ticker not available",
+                                         force=True)
