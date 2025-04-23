@@ -33,26 +33,20 @@ class Portfolio(models.Model):
         value = self.get_and_update_cash()
 
         for pos in self.holdings.all():
-            current_price = stock_data_wrapper.get(pos.ticker, "currentPrice")
+            current_price = stock_data_wrapper.get(pos.ticker, self.session.simulated_date)
             value += pos.shares * current_price
         return value
 
     def log_portfolio_value(self):
-        last_log = self.logs.order_by("-timestamp").first()
-        value = self.get_total_value()
-        if last_log and last_log.total_value == value:
-            last_log.timestamp = time.time()
-            last_log.save()
-            return
-        
         PortfolioLog.objects.create(
             portfolio=self,
             total_value=self.get_total_value(),
+            timestamp=self.session.simulated_date.strftime("%Y-%m-%d")
         )
 
     def buy_stock(self, ticker, shares, session_id, reasoning="None provided"):
         ticker = ticker.upper()
-        price = stock_data_wrapper.get(ticker, "currentPrice")
+        price = stock_data_wrapper.get(ticker, self.session.simulated_date)
 
         if price is None:
             raise ValueError(f"Could not retrieve price for {ticker}")
@@ -69,7 +63,7 @@ class Portfolio(models.Model):
             ticker=ticker,
             shares=shares,
             share_price_at_purchase=price,
-            purchase_timestamp=time.time(),
+            purchase_timestamp=session.simulated_date.strftime("%Y-%m-%d"),
         )
 
         TradeLog.objects.create(session=session, 
@@ -79,7 +73,8 @@ class Portfolio(models.Model):
                                 total_price=shares * price,
                                 share_price=price,
                                 profit=0, 
-                                reasoning=reasoning)
+                                reasoning=reasoning,
+                                timestamp=session.simulated_date.strftime("%Y-%m-%d"))
         
         self.get_and_update_cash()
         self.save()
@@ -94,7 +89,7 @@ class Portfolio(models.Model):
         if shares > total:
             raise ValueError("Not enough shares")
         
-        price = stock_data_wrapper.get(ticker, "currentPrice")
+        price = stock_data_wrapper.get(ticker, self.session.simulated_date)
 
         if price is None:
             raise ValueError(f"Could not retrieve price for {ticker}")
@@ -127,8 +122,8 @@ class Portfolio(models.Model):
                                  total_price=shares * price,
                                  share_price=price,
                                  profit=profit,
-                                 reasoning=reasoning)
-        self.log_portfolio_value()
+                                 reasoning=reasoning,
+                                 timestamp=session.simulated_date.strftime("%Y-%m-%d"))
 
         return price * shares
 
@@ -143,6 +138,7 @@ class SimulationSession(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     stocks = models.ManyToManyField(Stock, blank=True)
     name = models.CharField(max_length=100, unique=True, default = "Untitled Session")
+    simulated_date = models.DateTimeField(null=True, blank=True)
 
 
 class Position(models.Model):
@@ -150,13 +146,13 @@ class Position(models.Model):
     ticker = models.CharField(max_length=10)
     shares = models.FloatField()
     share_price_at_purchase = models.FloatField()
-    purchase_timestamp = models.FloatField(default=time.time)
+    purchase_timestamp = models.DateTimeField()
     session = models.ForeignKey(SimulationSession, on_delete=models.CASCADE, related_name="trades", null=True)
 
 
 class PortfolioLog(models.Model):
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="logs")
-    timestamp = models.FloatField(default=time.time)
+    timestamp = models.DateTimeField()
     total_value = models.FloatField()
 
 
@@ -168,5 +164,5 @@ class TradeLog(models.Model):
     total_price = models.FloatField()
     share_price = models.FloatField()
     profit = models.FloatField(null=True, blank=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField()
     reasoning = models.TextField(null=True, blank=True)

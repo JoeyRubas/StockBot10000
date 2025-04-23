@@ -12,9 +12,10 @@ from autogen_agentchat.conditions import TextMentionTermination
 from autogen_agentchat.teams import MagenticOneGroupChat
 from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
+from datetime import timedelta
 
 from portfolioapp.models import Portfolio, SimulationSession
-from portfolioapp.libs.data_fetchers import google_news_fetcher, twitter_news_fetcher
+from portfolioapp.libs.data_fetchers import google_news_fetcher, twitter_news_fetcher, stock_data_wrapper
 from portfolioapp.libs.tickers import available_tickers
 
 load_dotenv()
@@ -99,24 +100,42 @@ class LLMSession:
         portfolio = self.portfolio
         if not portfolio:
             return {"error": "No active portfolio found."}
-        holdings = portfolio.holdings.values("ticker").annotate(total=Sum("shares"))
+        holdings = portfolio.holdings.all()
         logging.debug(f"Current portfolio holdings: {holdings}")
-        return {entry["ticker"]: entry["total"] for entry in holdings}
+        return [{"ticker": h.ticker, 
+                 "shares": h.shares,
+                 "co": h.share_price_at_purchase,
+                 "current_share_price" : stock_data_wrapper.get(h.ticker, self.session.simulated_date)} 
+                                                                for h in holdings]
 
 
     def get_data(self) -> Dict[str, Union[str, float]]:
         try:
             data = {}
 
+            date = self.session.simulated_date
+
             if self.session.use_twitter:
-                data["twitter"] = twitter_news_fetcher.fetch("STOCK MARKET NEWS")
+                data["twitter"] = twitter_news_fetcher.fetch("STOCK MARKET NEWS",
+                                                             date = date)
+                for ticker in available_tickers:
+                    data[f"{ticker}_twitter"] = google_news_fetcher.fetch(ticker, 
+                                                                                date=date,
+                                                                                count=2)
+
 
             if self.session.use_google:
-                data["google"] = google_news_fetcher.fetch("STOCK MARKET NEWS")
+                data["google"] = google_news_fetcher.fetch("STOCK MARKET NEWS",
+                                                           date=date)
+                for ticker in available_tickers:
+                    data[f"{ticker}_google"] = google_news_fetcher.fetch(ticker, 
+                                                                                     date=date,
+                                                                                     count=2)
 
             if self.session.use_price_history:
                 for ticker in available_tickers:
-                    data[ticker] = google_news_fetcher.fetch_market_data(ticker)
+                    data[f"{ticker}_yesterday"] = stock_data_wrapper.get(ticker, date - timedelta(days=1))
+                    data[ticker] = google_news_fetcher.fetch_market_data(ticker, date=date)
 
             return data or {"message": "No data sources enabled for this session. You are to proceed without data."}
 
@@ -135,7 +154,7 @@ class LLMSession:
         )
 
 
-    async def run_stockbot_group_chat(self, agent_configs, task):
+    async def run_stockbot_group_chat(self, task):
         tools = [
             FunctionTool(self.buy, name="buy", description="Buy a stock."),
             FunctionTool(self.sell, name="sell", description="Sell a stock."),
@@ -146,21 +165,25 @@ class LLMSession:
             system_message=(
                 "You are an autonomous trading agent managing a simulated portfolio. "
                 "You may use all available cash to buy stocks. "
-                "Use the tools available (get_data, buy, sell, get_portfolio). "
-                "If the user specifies which stocks are allowed, ONLY use those. "
-                "If not, you can use any publicly traded stocks. "
+                "Use the tools available (buy, sell). "
                 "Make decisions using Twitter, Google Trends, and Price History data, if enabled."
             ),
             tools=tools,
         )
 
-        agents = [interfacing_agent]
-        for config in agent_configs:
-            agents.append(
-                self.create_agent(
-                    name=config["name"], description=config["description"], system_message=config["system_message"]
-                )
+        analyst_agent = self.create_agent(
+            name="analyst_agent",
+            description="Handles decision making and analysis.",
+            system_message=(
+                "You are an autonomous trading agent managing a simulated portfolio. "
+                "You may use all available cash to buy stocks. "
+                "You are specifically responsible for making decisions based on the data provided. "
+                "You will be provided with data from Twitter, Google Trends, and Price History. "
+                "You will also be provided with the current portfolio. "
             )
+        )
+
+        agents = [interfacing_agent, analyst_agent]
 
         termination = TextMentionTermination("TERMINATE")
         group_chat = MagenticOneGroupChat(agents, termination_condition=termination, model_client=custom_model_client)
@@ -185,11 +208,10 @@ def start_trade_for_session(session_id, stage="Start"):
 
     llm_session = LLMSession(session_id)
 
-    agent_configs = []
 
     task = prompts[stage]
     current_portfolio = str(llm_session.get_portfolio())
     data = str(llm_session.get_data())
     full_input = f"{task} Current portfolio: {current_portfolio}. Data: {data}"
 
-    asyncio.run(llm_session.run_stockbot_group_chat(agent_configs, full_input))
+    asyncio.run(llm_session.run_stockbot_group_chat(full_input))

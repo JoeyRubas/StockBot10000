@@ -37,7 +37,6 @@ def create_session(request):
             session = form.save(commit=False)
             session.user = request.user
 
-            # Handle duplicate name validation manually
             if SimulationSession.objects.filter(name=session.name).exists():
                 form.add_error("name", "This session name already exists.")
                 return render(request, "create_session.html", {"form": form})
@@ -47,7 +46,6 @@ def create_session(request):
             form.save_m2m()
             session.portfolio.log_portfolio_value()
 
-            # Start trading in a background thread
             Thread(target=start_trade_for_session, args=(session.id,)).start()
 
             return redirect("view_session", pk=session.id)
@@ -116,7 +114,7 @@ def sell(request):
 @login_required
 def portfolio_value_data(request, pk):
     logs = PortfolioLog.objects.filter(portfolio__session__id=pk).order_by("timestamp")
-    data = [{"x": log.timestamp, "y": round(log.total_value)} for log in logs]
+    data = [{"x": int(log.timestamp.timestamp()), "y": round(log.total_value)} for log in logs]
     return JsonResponse(data, safe=False)
 
 
@@ -179,7 +177,7 @@ def get_holdings(request, pk):
     data = [{"ticker": "Cash",
               "shares": "N/A", 
               "total_purchase_price": "N/A",
-              "value": round(cash),
+              "value": round(cash, 2),
               "change": "N/A"}]
     
     for ticker in tickers_held:
@@ -189,7 +187,7 @@ def get_holdings(request, pk):
             shares += position.shares
             total_purchase_price += position.shares * position.share_price_at_purchase
         total_purchase_price = round(total_purchase_price, 2)
-        price = stock_data_wrapper.get(ticker, "currentPrice")
+        price = stock_data_wrapper.get(ticker, session.simulated_date)
         data.append({
             "ticker": ticker,
             "shares": shares,
@@ -213,7 +211,7 @@ def get_trades(request, pk):
     session = get_object_or_404(SimulationSession, pk=pk, user=request.user)
     trades = TradeLog.objects.filter(session=session).order_by("timestamp")
     data = [{
-        "timestamp": trade.timestamp.strftime("%H:%M"),
+        "timestamp": trade.timestamp.strftime("%Y-%m-%d"),
         "action": trade.action,
         "symbol": trade.symbol,
         "shares": trade.shares,

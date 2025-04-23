@@ -24,4 +24,5 @@ available_tickers = [
     "ORCL",
     "HD",
     "KO",
+
 ]

@@ -76,3 +76,4 @@ celery
 django-celery-beat
 redis
 python-Levenshtein
+pandas

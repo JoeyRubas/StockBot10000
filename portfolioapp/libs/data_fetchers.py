@@ -2,77 +2,47 @@ import json
 import os
 import time
 import feedparser
-from yfinance import Ticker
+import yfinance as yf
 from portfolioapp.libs.tickers import available_tickers
 from fuzzywuzzy import process
-from datetime import datetime
+from datetime import datetime, timedelta
 import random
 from dotenv import load_dotenv
+import pandas as pd
 
 load_dotenv()
 use_logged_data = False
 topics = ["STOCK MARKET NEWS", "POLITICS NEWS", "ECONOMICS NEWS", "TECH NEWS", "BUSINESS NEWS"] + available_tickers
 
 
+import yfinance as yf
+from datetime import datetime
+from portfolioapp.libs.tickers import available_tickers
+
 class StockDataWrapper:
-    def __init__(self, simulation=False):
-        self.simulation = False
+    def __init__(self):
         self.cached_data = {}
-        self.fetch()
-        self.simulation = simulation
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        for ticker in available_tickers:
+            self.cached_data[ticker] = {}
+            df = yf.download(ticker, start='2024-01-01', end=today_str)
+            for index, row in df.iterrows():
+                date_str = index.strftime("%Y-%m-%d")
+                self.cached_data[ticker][date_str] = float(row['Close'].iloc[0])
 
-    def fetch_ticker(self, ticker):
-        if self.simulation:
-                print(f"Simulating data fetch for {ticker}")
-                cached = self.cached_data[ticker]
-                current_price = cached["currentPrice"] * (1 + (random.random() * 0.2 - 0.1))
-                day_high = max(cached["dayHigh"], current_price)
-                day_low = min(cached["dayLow"], current_price)
-                data = {
-                    "currentPrice": current_price,
-                    "previousClose": cached["previousClose"],
-                    "marketCap": cached["marketCap"],
-                    "volume": cached["volume"],
-                    "dayHigh": day_high,
-                    "dayLow": day_low,
-                    "LastUpdated": time.time(),
-                }
-        else:
-            stock = Ticker(ticker)
-            info = stock.info
-            data = {
-                "currentPrice": info.get("currentPrice"),
-                "previousClose": info.get("previousClose"),
-                "marketCap": info.get("marketCap"),
-                "volume": info.get("volume"),
-                "dayHigh": info.get("dayHigh"),
-                "dayLow": info.get("dayLow"),
-                "LastUpdated": time.time(),
-            }
-        return data
-
-    def fetch(self):
-        tickers = set(available_tickers)
-        for ticker in tickers:
-            self.cached_data[ticker] = self.fetch_ticker(ticker)
-                
-    def get(self, ticker, field):
+    def get(self, ticker, date):
         if ticker not in available_tickers:
             raise ValueError(f"Invalid ticker: {ticker}")
-        elif ticker not in self.cached_data:
-            self.cached_data[ticker] = self.fetch_ticker(ticker)
-        
-        cached_data = self.cached_data[ticker]
-        if cached_data["LastUpdated"] + 120 < time.time():
-            self.cached_data[ticker] = self.fetch_ticker(ticker)
-        
-        if field not in ["currentPrice", "previousClose", "marketCap", "volume", "dayHigh", "dayLow"]:
-            raise ValueError(f"Invalid field: {field}")
-        return self.cached_data[ticker][field]
 
-#Singleton instance for Stock Data Wrapper
-simulation_enabled = os.getenv("SIMULATION", "False") == "True"
-stock_data_wrapper = StockDataWrapper(True)
+        date_str = date.strftime("%Y-%m-%d")
+        if date_str not in self.cached_data.get(ticker, {}):
+            raise ValueError(f"No data available for {ticker} on {date_str}")
+
+        return self.cached_data[ticker][date_str]
+
+
+
+stock_data_wrapper = StockDataWrapper()
 
 
 google_url = "https://news.google.com/rss/search?q={topic}&hl=en-US&gl=US&ceid=US:en"
@@ -89,14 +59,10 @@ class DataFetcher:
         if type == "url":
             assert url is not None, "URL must be provided for type 'url'"
             self.url = url
-        elif type == "folder":
-            assert folder is not None, "Folder must be provided for type 'folder'"
-            self.folder = folder
-        else:
-            raise ValueError("Invalid type. Must be 'url' or 'folder'.")
+      
         self.info = info
 
-    def fetch(self, query):
+    def fetch(self, query, date: datetime = None, count=5):
         query = query.upper()
         if query not in topics:
             if "MARKET_DATA" in query:
@@ -113,30 +79,22 @@ class DataFetcher:
 
         query = query.replace(" ", "+")
 
+        if date:
+            start_str = date.strftime("%Y-%m-%d")
+            end_str = (date + timedelta(days=1)).strftime("%Y-%m-%d")
+            query += f"+after:{start_str}+before:{end_str}"
+
         if self.type == "url":
             formatted_url = self.url.format(topic=query)
             data = feedparser.parse(formatted_url).entries
             result = [entry.title for entry in data]
-            result = result[:5]
-            return f"Result for {query}: {' '.join(result)}"
+            result = result[:count]
+            return ' '.join(result)
 
-        elif self.type == "folder":
-            now = datetime.now()
-            minutes = (now.minute // 10) * 10
-            filename = f"{self.folder}/{now.hour:02d}-{minutes:02d}.json"
-            with open(filename, "r") as file:
-                raw_data = json.load(file)
-            return raw_data.get(query, [])
 
-    def fetch_market_data(self, ticker="APPL"):
-        if self.type == "folder":
-            return self.fetch(f"MARKET_DATA_{ticker}")
-
-        
+    def fetch_market_data(self, ticker, date):
         return {
-            "currentPrice": stock_data_wrapper(ticker, "currentPrice"),
-            "dayHigh": stock_data_wrapper(ticker, "dayHigh"),
-            "dayLow": stock_data_wrapper(ticker, "dayLow"),
+            "currentPrice": stock_data_wrapper.get(ticker, date),
         }
 
 
