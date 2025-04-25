@@ -16,4 +16,5 @@ urlpatterns = [
     path("api/search-stocks/", views.search_stocks, name="search_stocks"),
     path("session/<int:pk>/holdings/", views.get_holdings, name="get_holdings"),
     path("session/<int:pk>/trades/", views.get_trades, name="get_trades"),
+    path("session/<int:pk>/value_over_time/", views.value_over_time, name="value_over_time"),
 ]

@@ -188,13 +188,14 @@ def get_holdings(request, pk):
             total_purchase_price += position.shares * position.share_price_at_purchase
         total_purchase_price = round(total_purchase_price, 2)
         price = stock_data_wrapper.get(ticker, session.simulated_date)
-        data.append({
-            "ticker": ticker,
-            "shares": shares,
-            "total_purchase_price": total_purchase_price,
-            "value": round(shares * price, 2),
-            "change": round(price - position.share_price_at_purchase, 2),
-        })
+        if shares > 0:
+            data.append({
+                "ticker": ticker,
+                "shares": shares,
+                "total_purchase_price": total_purchase_price,
+                "value": round(shares * price, 2),
+                "change": round(price - position.share_price_at_purchase, 2),
+            })
         
     value = round(sum([d["value"] for d in data]),2)
     data.append({
@@ -210,16 +211,24 @@ def get_holdings(request, pk):
 def get_trades(request, pk):
     session = get_object_or_404(SimulationSession, pk=pk, user=request.user)
     trades = TradeLog.objects.filter(session=session).order_by("timestamp")
-    data = [{
-        "timestamp": trade.timestamp.strftime("%Y-%m-%d"),
-        "action": trade.action,
-        "symbol": trade.symbol,
-        "shares": trade.shares,
-        "total_price": trade.total_price,
-        "reasoning": trade.reasoning,
-        "profit": trade.profit,
-    } for trade in trades]
-
-
+    data = []
+    for trade in trades: 
+        if trade.shares > 0:
+            data.append({
+                "timestamp": trade.timestamp.strftime("%Y-%m-%d"),
+                "action": trade.action,
+                "symbol": trade.symbol,
+                "shares": trade.shares,
+                "total_price": trade.total_price,
+                "reasoning": trade.reasoning,
+                "profit": trade.profit,
+            })
 
     return JsonResponse(data, safe=False)
+
+@login_required
+def value_over_time(request, pk):
+    session = get_object_or_404(SimulationSession, pk=pk, user=request.user)
+    logs = PortfolioLog.objects.filter(portfolio=session.portfolio).order_by("timestamp")
+    data = [(log.timestamp, round(log.total_value)) for log in logs]
+    return render(request, "value_over_time.html", {"data": data, "session": session})

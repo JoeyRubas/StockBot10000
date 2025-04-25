@@ -33,7 +33,7 @@ def log_all_portfolios():
             try:
                 portfolio.log_portfolio_value()
                 next_day = True
-            except ValueError:
+            except:
                 next_day = False
         print(f"Advanced from {start_date} to {session.simulated_date}")
     for session in SimulationSession.objects.all():

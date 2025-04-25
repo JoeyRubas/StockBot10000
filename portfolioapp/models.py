@@ -45,6 +45,8 @@ class Portfolio(models.Model):
         )
 
     def buy_stock(self, ticker, shares, session_id, reasoning="None provided"):
+        if shares <= 0:
+            raise ValueError("Shares must be greater than 0")
         ticker = ticker.upper()
         if ticker not in available_tickers:
             raise ValueError("Invalid ticker")

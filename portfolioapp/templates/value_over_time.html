@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Portfolio Value History</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for date, value in data %}
+        <tr>
+            <td>{{ date }}</td>
+            <td>${{ value|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
